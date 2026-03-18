@@ -30,10 +30,11 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.14'
-
+    
     - name: Install Poetry
       run: pip install poetry
-
+    - name: Refesh lock file
+      run: poetry lock --no-update
     - name: Install Dependencies
       run: poetry install
 
