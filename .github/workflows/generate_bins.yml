@@ -34,7 +34,7 @@ jobs:
     - name: Install Poetry
       run: pip install poetry
     - name: Refesh lock file
-      run: poetry lock --no-update
+      run: poetry lock
     - name: Install Dependencies
       run: poetry install
 
