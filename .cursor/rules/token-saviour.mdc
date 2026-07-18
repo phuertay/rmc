@@ -1,0 +1,21 @@
+---
+description: token-saviour — route each task to the cheapest tool per layer.
+globs:
+alwaysApply: true
+---
+
+# token-saviour (always on)
+
+Before acting, classify which token layer the task stresses, then use that layer's tool if installed. Never pretend a tool ran; degrade to plain Read/Grep/Bash.
+
+| When about to… | Use instead | Layer |
+|---|---|---|
+| read several files for symbol/callers/architecture | **serena** MCP (`find_symbol`, `get_symbols_overview`, `find_referencing_symbols`) or `ts get`/`ts search`/`ts ctx` | code-read |
+| run noisy cmd (tests/build/git/grep/find/listings) | **rtk** (`rtk test`, `rtk grep`, `rtk read`, `rtk find`, `rtk git …`) | command-output |
+| write long chatty prose | **caveman ultra** (already always-on) | prose output |
+| generate/edit a chunk of code | **ponytail** (already always-on) | code output |
+| tiny one-file/one-line lookup | plain Read/Grep/Bash | — |
+
+Rules: one tool per layer; never two code-read tools; never rtk for comprehension; never caveman on code or ponytail on prose. Announce once: `🪙 token-saviour: serena + rtk + caveman ultra + ponytail` (or `plain tools (fallback)`).
+
+Full playbook: `.agents/skills/token-saviour/SKILL.md`.
