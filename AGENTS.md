@@ -23,6 +23,10 @@ or Docker services.
 - Run the CLI: `poetry run rmc -t svg tests/rm/Bold_Heading_Bullet_Normal.rm -o out.svg`
   (also `markdown`, `pdf`, `inkml`). Sample `.rm` fixtures live in `tests/rm/`.
 - Run the GUI: `cd ui_onenote_client && poetry run python main.py` (needs a display).
+- Build the standalone binary: `poetry run python build_exe.py` → `dist/rmc` (PyInstaller,
+  one-file). This is what the `Build rmc Binaries` workflow (`generate_bins.yml`) and the
+  downstream Avalonia sync-app build (`rmc_ref` = branch/SHA of `phuertay/rmc`) run to produce
+  `rmc-linux-x64` / `rmc-x64.exe` / `rmc-macos`. `dist/` and `build/` are gitignored.
 
 ### Non-obvious gotchas
 - **PDF export requires the `inkscape` CLI on PATH** (installed as a system package; not a
@@ -36,6 +40,10 @@ or Docker services.
   color id, NOT an environment problem. All other ~19 fixtures convert fine.
 - **`rmc -t markdown` without `-o` (writing to stdout) crashes** with a `TypeError`
   (`Path(output)` on a stream) — pre-existing CLI bug; pass `-o <file>` to work around it.
+- **The PyInstaller `dist/rmc` binary errors on `--version`** (`RuntimeError: 'rmc' is not
+  installed`) because the frozen build ships no package dist-metadata for `click`'s
+  `version_option`. Conversions (`-t svg|markdown|pdf|inkml`) — what the sync app invokes —
+  work fine. Pre-existing packaging quirk, not an env problem.
 - `pyproject.toml` lists `PySimpleGUI` but the GUI actually uses stdlib Tkinter.
 - Poetry is installed via pipx (`~/.local/bin/poetry`, symlinked into `/usr/local/bin`).
   The virtualenv lives under `~/.cache/pypoetry/virtualenvs/`.
