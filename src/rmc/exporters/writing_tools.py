@@ -26,8 +26,7 @@ RM_PALETTE = {
     PenColor.BLUE: (78, 105, 201),
     PenColor.RED: (179, 62, 57),
     PenColor.GRAY_OVERLAP: (125, 125, 125),
-    #! Skipped as different colors are used for highlights
-    #! PenColor.HIGHLIGHT = ...
+    PenColor.HIGHLIGHT: (255, 235, 76),
     PenColor.GREEN_2: (161, 216, 125),
     PenColor.CYAN: (139, 208, 229),
     PenColor.MAGENTA: (183, 130, 205),
@@ -45,7 +44,11 @@ def clamp(value):
 class Pen:
     def __init__(self, name, base_width, base_color_id):
         self.base_width = base_width
-        self.base_color = RM_PALETTE[base_color_id]
+        # Fall back to black for any color id missing from the palette so a new
+        # reMarkable color never aborts a whole conversion.
+        if base_color_id not in RM_PALETTE:
+            _logger.warning("Unknown pen color id %r; falling back to black", base_color_id)
+        self.base_color = RM_PALETTE.get(base_color_id, (0, 0, 0))
         self.name = name
         self.segment_length = 1000
         self.base_opacity = 1
