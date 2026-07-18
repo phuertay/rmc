@@ -34,16 +34,9 @@ or Docker services.
 - **The GUI needs `python3-tk`** (system package; `tkinter` is not pip-installable). It also
   must be launched from inside `ui_onenote_client/` because it imports sibling modules
   (`config`, `graph_client`, `converter_wrapper`) by bare name.
-- **`convert_test_files.sh` uses `set -euo pipefail`** and currently aborts on the fixture
-  `tests/rm/test_v_3_18.rm`, which raises `KeyError: 9` in `RM_PALETTE`
-  (`src/rmc/exporters/writing_tools.py`) — a pre-existing code limitation with a newer
-  color id, NOT an environment problem. All other ~19 fixtures convert fine.
-- **`rmc -t markdown` without `-o` (writing to stdout) crashes** with a `TypeError`
-  (`Path(output)` on a stream) — pre-existing CLI bug; pass `-o <file>` to work around it.
-- **The PyInstaller `dist/rmc` binary errors on `--version`** (`RuntimeError: 'rmc' is not
-  installed`) because the frozen build ships no package dist-metadata for `click`'s
-  `version_option`. Conversions (`-t svg|markdown|pdf|inkml`) — what the sync app invokes —
-  work fine. Pre-existing packaging quirk, not an env problem.
+- `convert_test_files.sh` uses `set -euo pipefail`; it now converts all fixtures cleanly
+  (including `tests/rm/test_v_3_18.rm`). Unknown pen color ids fall back to black with a
+  warning instead of aborting (`RM_PALETTE.get(...)` in `src/rmc/exporters/writing_tools.py`).
 - `pyproject.toml` lists `PySimpleGUI` but the GUI actually uses stdlib Tkinter.
 - Poetry is installed via pipx (`~/.local/bin/poetry`, symlinked into `/usr/local/bin`).
   The virtualenv lives under `~/.cache/pypoetry/virtualenvs/`.
