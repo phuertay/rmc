@@ -20,13 +20,14 @@ from .writing_tools import Pen, RM_PALETTE
 A4_HEIGHT_MM = 297
 A4_WIDTH_MM = 210
 ASPECT_RATIO = A4_WIDTH_MM / A4_HEIGHT_MM
-X_PAD = 0
-Y_PAD = 600 # OneNote pages have titles at the top, padding is used to avoid overlap.
+# scale() pads in the same units as InkML channel values. HTML CSS px cancel
+# WIDTH/HEIGHT_CONV below, so these pads are "RM-equivalent" CSS px after convert:
+# 48/120 match OneNote defaults for content below the title.
+X_PAD = 48 * 10
+Y_PAD = 120 * 10
 WIDTH_CONV_CONSTANT = 10
 HEIGHT_CONV_CONSTANT = 10
 PRESSURE_CONV_CONSTANT = 128
-# InkML channels are himetric; OneNote HTML absolute positions are CSS px @ 96 DPI.
-HIMETRIC_PER_CSS_PX = 2540 / 96
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
                  "xmlns:msink=\"http://schemas.microsoft.com/ink/2010/main\""
@@ -63,13 +64,20 @@ def scale(x: float, y: float) -> Tuple[int, int]:
     return new_x, new_y
 
 
-def himetric_to_css_px(value: float) -> float:
-    return value / HIMETRIC_PER_CSS_PX
+def scale_to_css_px(value: float) -> float:
+    """InkML scale() units → CSS px for absolute HTML.
+
+    OneNote draws InkML (units=himetric) and HTML (CSS px) in one page space.
+    True 96-DPI himetric→px (÷2540/96) pins typed text at the top-left while
+    ink lays out ~2.6× larger — they no longer share the notebook plane.
+    Cancel WIDTH/HEIGHT_CONV instead so RM deltas match the ink export scale.
+    """
+    return value / WIDTH_CONV_CONSTANT
 
 
 def rm_line_height_css(style: si.ParagraphStyle) -> float:
-    """RM LINE_HEIGHTS → CSS px via the same *CONV scale ink uses."""
-    return LINE_HEIGHTS.get(style, 70) * HEIGHT_CONV_CONSTANT / HIMETRIC_PER_CSS_PX
+    """RM LINE_HEIGHTS → CSS px (same cancel-CONV mapping as scale_to_css_px)."""
+    return float(LINE_HEIGHTS.get(style, 70))
 
 
 def _html_escape(s: str) -> str:
@@ -289,12 +297,12 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        width_px = himetric_to_css_px(float(text.width) * WIDTH_CONV_CONSTANT)
+        width_px = scale_to_css_px(float(text.width) * WIDTH_CONV_CONSTANT)
         for run in _text_runs(doc):
             _p0, rm_y = run[0]
             hx, hy = scale(text.pos_x, text.pos_y + rm_y)
-            left = himetric_to_css_px(hx)
-            top = himetric_to_css_px(hy)
+            left = scale_to_css_px(hx)
+            top = scale_to_css_px(hy)
             inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""
