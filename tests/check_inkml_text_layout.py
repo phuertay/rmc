@@ -1,8 +1,8 @@
 """OneNote InkML/HTML layout checks + fixtures.
 
 Example page pattern (from user OneNote export): typed → handwriting → typed.
-Blank lines between typed runs must become separate absolute fields so ink can
-sit in the gap (one big flowing div stacks all text and leaves no hole for ink).
+Blank lines between typed runs → separate absolute fields (gap for ink).
+Typed left/top must use the same scale→CSS mapping as ink (cancel WIDTH_CONV).
 
 Fixtures:
   tests/rm/text_and_strokes.rm     — ink + one typed word (overlap)
@@ -19,11 +19,10 @@ import re
 
 from rmscene import read_tree
 from rmscene.scene_stream import simple_text_document, write_blocks
-from rmc.exporters.inmkl import HIMETRIC_PER_CSS_PX, tree_to_html, tree_to_xml
+from rmc.exporters.inmkl import WIDTH_CONV_CONSTANT, tree_to_html, tree_to_xml
 
 ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm"
-# Matches user Example.one: "This is typed" … ink gap … "And this is typed again"
 FIXTURE = RM / "onenote_text_block.rm"
 EXAMPLE_TEXT = "This is typed\n\n\n\n\n\n\nAnd this is typed again"
 
@@ -47,7 +46,7 @@ def _ink_css_y_range(xml: str) -> tuple[float, float] | None:
         for trip in m.group(1).split(","):
             parts = trip.split()
             if len(parts) >= 2:
-                ys.append(int(parts[1]) / HIMETRIC_PER_CSS_PX)
+                ys.append(int(parts[1]) / WIDTH_CONV_CONSTANT)
     if not ys:
         return None
     return min(ys), max(ys)
@@ -85,13 +84,14 @@ def check_ink_text_overlap(path: Path) -> None:
     assert lo - 80 <= top <= hi + 80, (
         f"{path.name}: text top={top:.1f} outside ink CSS y=[{lo:.1f},{hi:.1f}]"
     )
+    # Must not collapse to the page title corner (old ÷26.5 bug).
+    assert top >= 200, f"{path.name}: text stuck near top ({top})"
 
 
 def main() -> None:
     ensure_fixture()
     check_text_ink_text_fields(FIXTURE)
     check_ink_text_overlap(RM / "text_and_strokes.rm")
-    # blanks between runs → multiple fields (not one stacked blob)
     _, multi = _export(RM / "text_multiple_lines.rm")
     assert len(_abs_tops(multi)) >= 2, multi
     print("ok: text/ink/text fields + ink overlap")
