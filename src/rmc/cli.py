@@ -7,6 +7,7 @@ import typing
 from pathlib import Path
 from contextlib import contextmanager
 import click
+from importlib.metadata import version, PackageNotFoundError
 from rmscene import read_tree, read_blocks, write_blocks, simple_text_document
 from .exporters.svg import tree_to_svg
 from .exporters.pdf import svg_to_pdf
@@ -14,9 +15,16 @@ from .exporters.markdown import print_text
 from .exporters.inmkl import tree_to_xml, tree_to_html
 import logging
 
+try:
+    # Package metadata is unavailable in frozen PyInstaller builds, so resolve
+    # the version explicitly and fall back rather than crashing on --version.
+    __version__ = version("rmc")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
+
 
 @click.command
-@click.version_option()
+@click.version_option(version=__version__)
 @click.option('-v', '--verbose', count=True)
 @click.option("-f", "--from", "from_", metavar="FORMAT", help="Format to convert from (default: guess from filename)")
 @click.option("-t", "--to", metavar="FORMAT", help="Format to convert to (default: guess from filename)")
@@ -41,9 +49,7 @@ def cli(verbose, from_, to, output, input):
         logging.basicConfig(level=logging.WARNING)
 
     input = [Path(p) for p in input]
-    output = Path(output) if output else sys.stdout
-    if output is not None:
-        output = Path(output)
+    output = Path(output) if output else None
 
     if from_ is None:
         if not input:
