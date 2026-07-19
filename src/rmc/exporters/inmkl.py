@@ -25,10 +25,6 @@ Y_PAD = 600 # OneNote pages have titles at the top, padding is used to avoid ove
 WIDTH_CONV_CONSTANT = 10
 HEIGHT_CONV_CONSTANT = 10
 PRESSURE_CONV_CONSTANT = 128
-# 1 CSS px at 96 DPI equals 2540/96 himetric units. Converting ink himetric
-# through this factor lets HTML text (CSS px) and InkML strokes (himetric) share
-# a single origin and unit mapping.
-HIMETRIC_PER_CSS_PX = 2540 / 96
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
                  "xmlns:msink=\"http://schemas.microsoft.com/ink/2010/main\""
@@ -65,9 +61,15 @@ def scale(x: float, y: float) -> Tuple[int, int]:
     return new_x, new_y
 
 
-def himetric_to_css_px(value: float) -> float:
-    """Convert a himetric coordinate to CSS px so HTML text lines up with ink."""
-    return value / HIMETRIC_PER_CSS_PX
+def rm_to_css_px(x: float, y: float) -> Tuple[float, float]:
+    """RM point → CSS px using the frozen page origin ink uses.
+
+    Ink goes RM → scale() (*CONV + Y_PAD) as InkML himetric. HTML wants CSS px.
+    Mapping through true 96-DPI himetric (÷2540/96) crushes LINE_HEIGHTS (~70 → ~26)
+    so all typed lines stack at the top. Keep RM deltas as CSS px (and Y_PAD as the
+    OneNote title clearance it was written for) so text spacing matches the notebook.
+    """
+    return (x - min_x) + X_PAD, (y - min_y) + Y_PAD
 
 
 def tree_to_xml(tree: SceneTree, output):
@@ -193,8 +195,7 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
 
 def tree_to_html(tree: SceneTree, output):
     text = tree.root_text
-    # Freeze the same page origin the ink uses, so HTML text (CSS px) and InkML
-    # strokes (himetric) share one coordinate space and unit mapping.
+    # Freeze the same page origin ink uses (min_*), then map RM → CSS via rm_to_css_px.
     global min_x, max_x, min_y, max_y
     anchor_pos = build_anchor_pos(tree.root_text)
     min_x, max_x, min_y, max_y = get_bounding_box(tree.root, anchor_pos)
@@ -207,7 +208,7 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        width_px = himetric_to_css_px(int(text.width) * WIDTH_CONV_CONSTANT)
+        width_px = float(text.width)
         # Match SVG text line layout (svg.draw_text): start at TEXT_TOP_Y and add
         # the paragraph line height for every paragraph (including empty ones) so
         # lines stay aligned.
@@ -215,10 +216,7 @@ def tree_to_html(tree: SceneTree, output):
         for p in doc.contents:
             y_offset += LINE_HEIGHTS.get(p.style.value, 70)
             if str(p):
-                # Same transform as the ink: rm -> himetric (scale) -> CSS px.
-                himetric_x, himetric_y = scale(text.pos_x, text.pos_y + y_offset)
-                left = himetric_to_css_px(himetric_x)
-                top = himetric_to_css_px(himetric_y)
+                left, top = rm_to_css_px(text.pos_x, text.pos_y + y_offset)
                 style_props = [f'{prop}: {val}' for prop,val in p.contents[0].properties.items()]
                 try:
                     # Translate unsupported unicode chars
@@ -226,7 +224,7 @@ def tree_to_html(tree: SceneTree, output):
                     output.write(
                     f"""   
                 <div id="{p.start_id}" style="position: absolute; left: {left:.2f}px; top: {top:.2f}px; width: {width_px:.2f}px">
-                    <p style="{';'.join(style_props)}">{content}</p>
+                    <p style="margin: 0; {';'.join(style_props)}">{content}</p>
                 </div>""")
                 except Exception as e:
                     print(e)
