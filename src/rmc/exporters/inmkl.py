@@ -102,12 +102,8 @@ def _format_line(p) -> str:
     return _html_escape(raw).replace("\n", "<br/>")
 
 
-def _is_plain_run(style: si.ParagraphStyle) -> bool:
-    return style == si.ParagraphStyle.PLAIN
-
-
-def _emit_text_inner(doc: TextDocument) -> str:
-    """Flowing HTML inside one absolute div. Merge consecutive PLAIN lines with <br/>."""
+def _emit_run_inner(paragraphs) -> str:
+    """HTML inside one absolute div for a contiguous non-blank run."""
     parts: List[str] = []
     plain_lines: List[str] = []
     plain_props: dict = {}
@@ -116,30 +112,45 @@ def _emit_text_inner(doc: TextDocument) -> str:
         nonlocal plain_lines, plain_props
         if not plain_lines:
             return
-        while plain_lines and plain_lines[-1] == "":
-            plain_lines.pop()
-        if not plain_lines:
-            return
-        body = "<br/>".join(line if line else "" for line in plain_lines)
+        body = "<br/>".join(plain_lines)
         css = _paragraph_css(si.ParagraphStyle.PLAIN, plain_props)
         parts.append(f'<p style="{css}">{body}</p>')
         plain_lines = []
         plain_props = {}
 
-    for p in doc.contents:
+    for p in paragraphs:
         style = p.style.value
         props = dict(p.contents[0].properties) if p.contents else {}
         line = _format_line(p)
-        if _is_plain_run(style):
+        if style == si.ParagraphStyle.PLAIN:
             if not plain_lines:
                 plain_props = props
             plain_lines.append(line)
             continue
         flush_plain()
         css = _paragraph_css(style, props)
-        parts.append(f'<p style="{css}">{line if line else "<br/>"}</p>')
+        parts.append(f'<p style="{css}">{line}</p>')
     flush_plain()
     return "".join(parts)
+
+
+def _text_runs(doc: TextDocument):
+    """Group non-empty paragraphs into runs separated by blank lines.
+
+    Each run → one absolute OneNote field. Blank lines only advance Y so
+    handwriting can sit between typed blocks (text / ink / text pages).
+    """
+    y_offset = TEXT_TOP_Y
+    run = []  # (paragraph, rm_y)
+    for p in doc.contents:
+        y_offset += LINE_HEIGHTS.get(p.style.value, 70)
+        if str(p).strip():
+            run.append((p, y_offset))
+        elif run:
+            yield run
+            run = []
+    if run:
+        yield run
 
 
 def tree_to_xml(tree: SceneTree, output):
@@ -264,9 +275,8 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
 
 
 def tree_to_html(tree: SceneTree, output):
-    """Emit OneNote HTML: one absolute text block, flowing <p>s, ink-aligned coords."""
+    """Emit OneNote HTML: absolute text runs (gaps for ink), himetric-aligned CSS."""
     text = tree.root_text
-    # Same frozen origin as tree_to_xml / scale(), then himetric → CSS px.
     global min_x, max_x, min_y, max_y
     anchor_pos = build_anchor_pos(tree.root_text)
     min_x, max_x, min_y, max_y = get_bounding_box(tree.root, anchor_pos)
@@ -279,14 +289,13 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        if doc.contents:
-            # Anchor the single div at the first line (same advance as svg.draw_text).
-            y_offset = TEXT_TOP_Y + LINE_HEIGHTS.get(doc.contents[0].style.value, 70)
-            hx, hy = scale(text.pos_x, text.pos_y + y_offset)
+        width_px = himetric_to_css_px(float(text.width) * WIDTH_CONV_CONSTANT)
+        for run in _text_runs(doc):
+            _p0, rm_y = run[0]
+            hx, hy = scale(text.pos_x, text.pos_y + rm_y)
             left = himetric_to_css_px(hx)
             top = himetric_to_css_px(hy)
-            width_px = himetric_to_css_px(float(text.width) * WIDTH_CONV_CONSTANT)
-            inner = _emit_text_inner(doc)
+            inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""
                 <div style="position: absolute; left: {left:.2f}px; top: {top:.2f}px; width: {width_px:.2f}px">

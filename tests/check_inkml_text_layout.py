@@ -1,9 +1,13 @@
-"""OneNote InkML/HTML layout checks + fixture builder.
+"""OneNote InkML/HTML layout checks + fixtures.
+
+Example page pattern (from user OneNote export): typed → handwriting → typed.
+Blank lines between typed runs must become separate absolute fields so ink can
+sit in the gap (one big flowing div stacks all text and leaves no hole for ink).
 
 Fixtures:
-  tests/rm/text_and_strokes.rm  — ink + typed word (alignment)
-  tests/rm/text_multiple_lines.rm — many typed lines (one field)
-  tests/rm/onenote_text_block.rm — generated multi-line plain text
+  tests/rm/text_and_strokes.rm     — ink + one typed word (overlap)
+  tests/rm/onenote_text_block.rm   — typed / blank / typed (two fields)
+  tests/rm/text_multiple_lines.rm  — blanks between runs
 
 Run: poetry run python tests/check_inkml_text_layout.py
 """
@@ -19,7 +23,9 @@ from rmc.exporters.inmkl import HIMETRIC_PER_CSS_PX, tree_to_html, tree_to_xml
 
 ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm"
+# Matches user Example.one: "This is typed" … ink gap … "And this is typed again"
 FIXTURE = RM / "onenote_text_block.rm"
+EXAMPLE_TEXT = "This is typed\n\n\n\n\n\n\nAnd this is typed again"
 
 
 def _export(path: Path) -> tuple[str, str]:
@@ -29,7 +35,6 @@ def _export(path: Path) -> tuple[str, str]:
     xml_buf.name = path.stem + ".xml"
     html_buf.name = path.stem + ".html"
     tree_to_xml(tree, xml_buf)
-    # tree_to_xml mutates globals; re-read for a clean html pass
     with path.open("rb") as f:
         tree = read_tree(f)
     tree_to_html(tree, html_buf)
@@ -48,38 +53,35 @@ def _ink_css_y_range(xml: str) -> tuple[float, float] | None:
     return min(ys), max(ys)
 
 
-def _abs_divs(html: str) -> list[str]:
-    return re.findall(r'<div style="position: absolute;[^"]*"[^>]*>', html)
+def _abs_tops(html: str) -> list[float]:
+    return [float(t) for t in re.findall(r"top: ([0-9.]+)px", html)]
 
 
 def ensure_fixture() -> Path:
-    """Write a checked-in multi-line typed-text .rm if missing/outdated."""
-    text = "Line one\nLine two\nLine three\n\nAfter a blank line"
     buf = BytesIO()
-    write_blocks(buf, simple_text_document(text))
+    write_blocks(buf, simple_text_document(EXAMPLE_TEXT))
     FIXTURE.write_bytes(buf.getvalue())
     return FIXTURE
 
 
-def check_one_text_field(path: Path) -> None:
+def check_text_ink_text_fields(path: Path) -> None:
+    """Typed runs separated by blanks → 2+ absolute fields, increasing tops."""
     _, html = _export(path)
-    divs = _abs_divs(html)
-    assert len(divs) == 1, f"{path.name}: want 1 absolute text field, got {len(divs)}\n{html}"
-    # Multi-line notebook text → one field: either several <p> or one <p> with <br/>.
-    assert html.count("<p ") >= 1 and (
-        html.count("<p ") >= 2 or "<br/>" in html
-    ), f"{path.name}: expected multi-line content in one div\n{html}"
+    tops = _abs_tops(html)
+    assert len(tops) >= 2, f"{path.name}: want ≥2 text fields for text/ink/text, got {tops}\n{html}"
+    assert tops == sorted(tops), tops
+    assert tops[-1] - tops[0] >= 50, f"{path.name}: fields too close {tops}"
+    assert "This is typed" in html and "And this is typed again" in html, html
 
 
 def check_ink_text_overlap(path: Path) -> None:
     xml, html = _export(path)
     ink = _ink_css_y_range(xml)
     assert ink is not None, f"{path.name}: no ink"
-    m = re.search(r"top: ([0-9.]+)px", html)
-    assert m, html
-    top = float(m.group(1))
+    tops = _abs_tops(html)
+    assert len(tops) == 1, tops
     lo, hi = ink
-    # Typed block must sit in the same vertical band as ink (not a page below).
+    top = tops[0]
     assert lo - 80 <= top <= hi + 80, (
         f"{path.name}: text top={top:.1f} outside ink CSS y=[{lo:.1f},{hi:.1f}]"
     )
@@ -87,10 +89,12 @@ def check_ink_text_overlap(path: Path) -> None:
 
 def main() -> None:
     ensure_fixture()
-    check_one_text_field(FIXTURE)
-    check_one_text_field(RM / "text_multiple_lines.rm")
+    check_text_ink_text_fields(FIXTURE)
     check_ink_text_overlap(RM / "text_and_strokes.rm")
-    print("ok: one text field + ink/text overlap")
+    # blanks between runs → multiple fields (not one stacked blob)
+    _, multi = _export(RM / "text_multiple_lines.rm")
+    assert len(_abs_tops(multi)) >= 2, multi
+    print("ok: text/ink/text fields + ink overlap")
 
 
 if __name__ == "__main__":
