@@ -25,6 +25,8 @@ Y_PAD = 600 # OneNote pages have titles at the top, padding is used to avoid ove
 WIDTH_CONV_CONSTANT = 10
 HEIGHT_CONV_CONSTANT = 10
 PRESSURE_CONV_CONSTANT = 128
+# InkML channels are himetric; OneNote HTML absolute positions are CSS px @ 96 DPI.
+HIMETRIC_PER_CSS_PX = 2540 / 96
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
                  "xmlns:msink=\"http://schemas.microsoft.com/ink/2010/main\""
@@ -61,15 +63,94 @@ def scale(x: float, y: float) -> Tuple[int, int]:
     return new_x, new_y
 
 
-def rm_to_css_px(x: float, y: float) -> Tuple[float, float]:
-    """RM point → CSS px using the frozen page origin ink uses.
+def himetric_to_css_px(value: float) -> float:
+    return value / HIMETRIC_PER_CSS_PX
 
-    Ink goes RM → scale() (*CONV + Y_PAD) as InkML himetric. HTML wants CSS px.
-    Mapping through true 96-DPI himetric (÷2540/96) crushes LINE_HEIGHTS (~70 → ~26)
-    so all typed lines stack at the top. Keep RM deltas as CSS px (and Y_PAD as the
-    OneNote title clearance it was written for) so text spacing matches the notebook.
+
+def rm_line_height_css(style: si.ParagraphStyle) -> float:
+    """RM LINE_HEIGHTS → CSS px via the same *CONV scale ink uses."""
+    return LINE_HEIGHTS.get(style, 70) * HEIGHT_CONV_CONSTANT / HIMETRIC_PER_CSS_PX
+
+
+def _html_escape(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _paragraph_css(style: si.ParagraphStyle, props: dict) -> str:
+    """Build inline CSS for one flowing paragraph inside the text block div."""
+    lh = rm_line_height_css(style)
+    parts = [f"margin: 0", f"line-height: {lh:.2f}px"]
+    if style == si.ParagraphStyle.HEADING:
+        parts += ["font-size: 16pt", "font-weight: bold"]
+    elif style == si.ParagraphStyle.BOLD:
+        parts.append("font-weight: bold")
+    elif style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
+        parts.append("padding-left: 1.2em")
+    for k, v in props.items():
+        if k == "font-weight" and style in (si.ParagraphStyle.HEADING, si.ParagraphStyle.BOLD):
+            continue
+        parts.append(f"{k}: {v}")
+    return "; ".join(parts)
+
+
+def _format_line(p) -> str:
+    raw = str(p).strip().replace("\u2028", "\n").replace("\u2029", "\n")
+    if not raw:
+        return ""
+    if p.style.value in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
+        raw = "• " + raw
+    return _html_escape(raw).replace("\n", "<br/>")
+
+
+def _emit_run_inner(paragraphs) -> str:
+    """HTML inside one absolute div for a contiguous non-blank run."""
+    parts: List[str] = []
+    plain_lines: List[str] = []
+    plain_props: dict = {}
+
+    def flush_plain():
+        nonlocal plain_lines, plain_props
+        if not plain_lines:
+            return
+        body = "<br/>".join(plain_lines)
+        css = _paragraph_css(si.ParagraphStyle.PLAIN, plain_props)
+        parts.append(f'<p style="{css}">{body}</p>')
+        plain_lines = []
+        plain_props = {}
+
+    for p in paragraphs:
+        style = p.style.value
+        props = dict(p.contents[0].properties) if p.contents else {}
+        line = _format_line(p)
+        if style == si.ParagraphStyle.PLAIN:
+            if not plain_lines:
+                plain_props = props
+            plain_lines.append(line)
+            continue
+        flush_plain()
+        css = _paragraph_css(style, props)
+        parts.append(f'<p style="{css}">{line}</p>')
+    flush_plain()
+    return "".join(parts)
+
+
+def _text_runs(doc: TextDocument):
+    """Group non-empty paragraphs into runs separated by blank lines.
+
+    Each run → one absolute OneNote field. Blank lines only advance Y so
+    handwriting can sit between typed blocks (text / ink / text pages).
     """
-    return (x - min_x) + X_PAD, (y - min_y) + Y_PAD
+    y_offset = TEXT_TOP_Y
+    run = []  # (paragraph, rm_y)
+    for p in doc.contents:
+        y_offset += LINE_HEIGHTS.get(p.style.value, 70)
+        if str(p).strip():
+            run.append((p, y_offset))
+        elif run:
+            yield run
+            run = []
+    if run:
+        yield run
 
 
 def tree_to_xml(tree: SceneTree, output):
@@ -194,8 +275,8 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
 
 
 def tree_to_html(tree: SceneTree, output):
+    """Emit OneNote HTML: absolute text runs (gaps for ink), himetric-aligned CSS."""
     text = tree.root_text
-    # Freeze the same page origin ink uses (min_*), then map RM → CSS via rm_to_css_px.
     global min_x, max_x, min_y, max_y
     anchor_pos = build_anchor_pos(tree.root_text)
     min_x, max_x, min_y, max_y = get_bounding_box(tree.root, anchor_pos)
@@ -208,26 +289,19 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        width_px = float(text.width)
-        # Match SVG text line layout (svg.draw_text): start at TEXT_TOP_Y and add
-        # the paragraph line height for every paragraph (including empty ones) so
-        # lines stay aligned.
-        y_offset = TEXT_TOP_Y
-        for p in doc.contents:
-            y_offset += LINE_HEIGHTS.get(p.style.value, 70)
-            if str(p):
-                left, top = rm_to_css_px(text.pos_x, text.pos_y + y_offset)
-                style_props = [f'{prop}: {val}' for prop,val in p.contents[0].properties.items()]
-                try:
-                    # Translate unsupported unicode chars
-                    content = str(p).strip().replace('\u2028', '<br>').replace('\u2029', '<br>')
-                    output.write(
-                    f"""   
-                <div id="{p.start_id}" style="position: absolute; left: {left:.2f}px; top: {top:.2f}px; width: {width_px:.2f}px">
-                    <p style="margin: 0; {';'.join(style_props)}">{content}</p>
-                </div>""")
-                except Exception as e:
-                    print(e)
+        width_px = himetric_to_css_px(float(text.width) * WIDTH_CONV_CONSTANT)
+        for run in _text_runs(doc):
+            _p0, rm_y = run[0]
+            hx, hy = scale(text.pos_x, text.pos_y + rm_y)
+            left = himetric_to_css_px(hx)
+            top = himetric_to_css_px(hy)
+            inner = _emit_run_inner([p for p, _y in run])
+            output.write(
+                f"""
+                <div style="position: absolute; left: {left:.2f}px; top: {top:.2f}px; width: {width_px:.2f}px">
+                    {inner}
+                </div>"""
+            )
     output.write("""
     </body>
 </html>""")
