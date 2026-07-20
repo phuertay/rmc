@@ -109,29 +109,35 @@ def tree_to_svg(tree: SceneTree, output, include_template: Path | None = None):
     output.write('</svg>\n')
 
 
+# Sentinel anchor IDs used by reMarkable for ink above/below the text block.
+ANCHOR_BEFORE_TEXT = CrdtId(0, 281474976710654)
+ANCHOR_AFTER_TEXT = CrdtId(0, 281474976710655)
+
+
 def build_anchor_pos(text: tp.Optional[si.Text]) -> tp.Dict[CrdtId, int]:
+    """Map CRDT ids → RM Y for ink group anchors (shared by SVG and InkML).
+
+    BEFORE/AFTER sentinels track the text block start/end so handwriting above
+    and below stays separated from typed lines (see tests/rm/al_medio.rm).
     """
-    Find the anchor pos
+    anchor_pos: tp.Dict[CrdtId, int] = {}
 
-    :param text: the root text of the remarkable file
-    """
-    # Special anchors adjusted based on pen_size_test.strokes.rm
-    anchor_pos = {
-        CrdtId(0, 281474976710654): 100,
-        CrdtId(0, 281474976710655): 100,
-    }
+    if text is None:
+        # Empty page: keep legacy placeholder used by older fixtures.
+        anchor_pos[ANCHOR_BEFORE_TEXT] = 100
+        anchor_pos[ANCHOR_AFTER_TEXT] = 100
+        return anchor_pos
 
-    if text is not None:
-        # Save anchor from text
-        doc = TextDocument.from_scene_item(text)
-        ypos = text.pos_y + TEXT_TOP_Y
-        for i, p in enumerate(doc.contents):
-            anchor_pos[p.start_id] = ypos
-            for subp in p.contents:
-                for k in subp.i:
-                    anchor_pos[k] = ypos  # TODO check these anchor are used
-            ypos += LINE_HEIGHTS.get(p.style.value, 70)
-
+    doc = TextDocument.from_scene_item(text)
+    ypos = text.pos_y + TEXT_TOP_Y
+    anchor_pos[ANCHOR_BEFORE_TEXT] = ypos
+    for p in doc.contents:
+        anchor_pos[p.start_id] = ypos
+        for subp in p.contents:
+            for k in subp.i:
+                anchor_pos[k] = ypos
+        ypos += LINE_HEIGHTS.get(p.style.value, 70)
+    anchor_pos[ANCHOR_AFTER_TEXT] = ypos
     return anchor_pos
 
 
@@ -266,18 +272,16 @@ def draw_text(text: si.Text, output):
             </style>
 ''')
 
-    y_offset = TEXT_TOP_Y
-
+    # Same Y walk as build_anchor_pos: place glyphs on the ink anchor line,
+    # not one LINE_HEIGHT below (that put "Al medio" outside its hand-drawn box).
+    ypos = text.pos_y + TEXT_TOP_Y
     doc = TextDocument.from_scene_item(text)
     for p in doc.contents:
-        y_offset += LINE_HEIGHTS.get(p.style.value, 70)
-
         xpos = text.pos_x
-        ypos = text.pos_y + y_offset
         cls = p.style.value.name.lower()
         if str(p):
-            # TODO: this doesn't take into account the CrdtStr.properties (font-weight/font-style)
             if _logger.root.level == logging.DEBUG:
                 output.write(f'\t\t\t<!-- Text line char_id: {p.start_id} -->\n')
             output.write(f'\t\t\t<text x="{xx(xpos)}" y="{yy(ypos)}" class="{cls}">{str(p).strip()}</text>\n')
+        ypos += LINE_HEIGHTS.get(p.style.value, 70)
     output.write('\t\t</g>\n')
