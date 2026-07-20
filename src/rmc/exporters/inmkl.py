@@ -8,21 +8,28 @@ Coordinate system (one pipeline for ink and typed text)
 -------------------------------------------------------
 1. RM page units, origin at the frozen content bbox (min_x, min_y).
 2. InkML:  rm_to_inkml() = (rm - origin) * RM_PER_INK + pad
-   Channel units are labeled himetric (OneNote requirement). RM_PER_INK is the
-   export scale (10), shared by every stroke and every text corner.
-3. HTML CSS px: inkml_to_css() = inkml / RM_PER_INK
-   so the same RM point yields matching ink and absolute HTML positions.
+   Channel units are real himetric (1 inch = 2540). RM_PER_INK = 2540/SCREEN_DPI
+   so 1 RM screen-pixel = 1/SCREEN_DPI inch.
+3. HTML CSS px: inkml_to_css() = inkml * 96/2540  (CSS px at 96 DPI)
+   Same RM point → matching ink and absolute HTML (OneNote calib 2026-07-20).
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 
-Pads (48, 120) CSS px match OneNote defaults below the title; stored in inkml units.
+Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
 
 from rmscene.scene_items import PenColor
 import logging
 from pathlib import Path
 from rmscene import SceneTree
-from .svg import build_anchor_pos, get_anchor, get_bounding_box, LINE_HEIGHTS, TEXT_TOP_Y
+from .svg import (
+    SCREEN_DPI,
+    build_anchor_pos,
+    get_anchor,
+    get_bounding_box,
+    LINE_HEIGHTS,
+    TEXT_TOP_Y,
+)
 from rmscene import scene_items as si
 from rmscene.text import TextDocument
 from typing import List, Tuple
@@ -34,17 +41,20 @@ A4_HEIGHT_MM = 297
 A4_WIDTH_MM = 210
 ASPECT_RATIO = A4_WIDTH_MM / A4_HEIGHT_MM
 
-# RM → InkML scale (also brush size). CSS cancels this so RM deltas match.
-RM_PER_INK = 10
-WIDTH_CONV_CONSTANT = RM_PER_INK  # brush / legacy name
+HIMETRIC_PER_INCH = 2540
+CSS_DPI = 96
+# Physical himetric per RM unit (RM coords are screen pixels at SCREEN_DPI).
+RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
+CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
+WIDTH_CONV_CONSTANT = RM_PER_INK  # brush size in himetric
 HEIGHT_CONV_CONSTANT = RM_PER_INK
 PRESSURE_CONV_CONSTANT = 128
 
-# OneNote HTML defaults below title (CSS px), expressed in InkML units.
+# OneNote HTML defaults below title (CSS px), expressed in himetric.
 CSS_X_PAD = 48
 CSS_Y_PAD = 120
-X_PAD = CSS_X_PAD * RM_PER_INK
-Y_PAD = CSS_Y_PAD * RM_PER_INK
+X_PAD = CSS_X_PAD / CSS_PER_HIMETRIC
+Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
@@ -75,8 +85,13 @@ def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
 
 
 def inkml_to_css(value: float) -> float:
-    """InkML channel value → CSS px (inverse of RM_PER_INK)."""
-    return value / RM_PER_INK
+    """InkML himetric → CSS px at 96 DPI."""
+    return value * CSS_PER_HIMETRIC
+
+
+def rm_delta_to_css(delta_rm: float) -> float:
+    """RM length (no pad) → CSS px."""
+    return delta_rm * RM_PER_INK * CSS_PER_HIMETRIC
 
 
 def rm_to_css(x: float, y: float) -> Tuple[float, float]:
@@ -91,7 +106,7 @@ scale_to_css_px = inkml_to_css
 
 
 def rm_line_height_css(style: si.ParagraphStyle) -> float:
-    return float(LINE_HEIGHTS.get(style, 70))
+    return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
 def _html_escape(s: str) -> str:
@@ -294,7 +309,7 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        width_px = float(text.width)
+        width_px = rm_delta_to_css(float(text.width))
         for run in _text_runs(doc, text.pos_y):
             _p0, abs_y = run[0]
             left, top = rm_to_css(text.pos_x, abs_y)

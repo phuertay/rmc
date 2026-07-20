@@ -1,8 +1,8 @@
 """Prove ink and typed text share one RM → InkML → CSS pipeline.
 
 System under test (see inmkl module docstring):
-  RM (bbox origin) → * RM_PER_INK + pad = InkML
-                   → / RM_PER_INK         = HTML CSS px
+  RM (bbox origin) → * RM_PER_INK + pad = InkML (himetric)
+                   → * 96/2540           = HTML CSS px
   Text line Y = build_anchor_pos Y (same as ink group anchors).
 
 Run: poetry run python tests/check_inkml_text_layout.py
@@ -17,8 +17,10 @@ from rmscene import read_tree
 from rmscene.scene_stream import simple_text_document, write_blocks
 from rmscene.text import TextDocument
 from rmc.exporters.inmkl import (
+    CSS_PER_HIMETRIC,
     RM_PER_INK,
     inkml_to_css,
+    rm_delta_to_css,
     rm_to_css,
     rm_to_inkml,
     set_page_origin,
@@ -78,9 +80,11 @@ def check_pipeline_identity() -> None:
         assert abs(cx - inkml_to_css(ix)) < 1e-6 and abs(cy - inkml_to_css(iy)) < 1e-6, (
             x, y, ix, iy, cx, cy
         )
-        # Round-trip RM delta: 1 RM unit → RM_PER_INK inkml → 1 CSS px
+        # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px
         ix2, _ = rm_to_inkml(x + 1, y)
-        assert ix2 - ix == RM_PER_INK
+        assert abs((ix2 - ix) - RM_PER_INK) < 1.0
+        assert abs(inkml_to_css(ix2) - inkml_to_css(ix) - rm_delta_to_css(1.0)) < CSS_PER_HIMETRIC
+        assert abs(CSS_PER_HIMETRIC - 96 / 2540) < 1e-15
 
 
 def check_text_y_matches_ink_anchors(path: Path) -> None:
@@ -117,7 +121,8 @@ def check_text_ink_text_fields(path: Path) -> None:
     tops = _abs_tops(html)
     assert len(tops) >= 2, f"{path.name}: want ≥2 text fields, got {tops}\n{html}"
     assert tops == sorted(tops), tops
-    assert tops[-1] - tops[0] >= 50, tops
+    # Gap is in CSS px after himetric scale (~0.42× RM).
+    assert tops[-1] - tops[0] >= 20, tops
     assert "This is typed" in html and "And this is typed again" in html
 
 
@@ -132,7 +137,6 @@ def check_ink_text_same_origin(path: Path) -> None:
     xml, html = _export(path)
     tops = _abs_tops(html)
     assert tops, html
-    # First HTML top == CSS of first non-empty paragraph's ink anchor Y
     from rmc.exporters.svg import LINE_HEIGHTS
 
     doc = TextDocument.from_scene_item(text)
@@ -145,7 +149,6 @@ def check_ink_text_same_origin(path: Path) -> None:
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
     ink = _ink_css_y_range(xml)
     assert ink is not None
-    # Ink present and finite — placed via same rm_to_inkml as text corners.
     assert ink[1] > ink[0] >= 0
 
 

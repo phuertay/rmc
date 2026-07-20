@@ -1,24 +1,34 @@
-#!/usr/bin/env python3
 """Offline sanity check for the calib page generator (no Graph token)."""
+from __future__ import annotations
+
 from pathlib import Path
-import json
-import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generate_calib_page import generate, OUT, TRUE_HIMETRIC_PER_CSS
+from generate_calib_page import generate
+from rmc.exporters.inmkl import CSS_PER_HIMETRIC, inkml_to_css
 
-man = generate()
-assert (OUT / "calib.xml").is_file() and (OUT / "calib.html").is_file()
-html = (OUT / "calib.html").read_text(encoding="utf-8")
-xml = (OUT / "calib.xml").read_text(encoding="utf-8")
-assert html.count("position: absolute") == 9  # 4*O + 4*H + legend
-assert xml.count("<inkml:trace") >= 8 + 22  # 4 crosses *2 + rulers
-for m in man["markers"]:
-    ix, iy = m["inkml"]
-    ol, ot = m["css_ours"]
-    hl, ht = m["css_true_himetric"]
-    assert abs(ol - ix / 10) < 0.01 and abs(ot - iy / 10) < 0.01
-    assert abs(hl - ix / TRUE_HIMETRIC_PER_CSS) < 0.01
-    # Hypotheses must disagree (otherwise the page teaches nothing).
-    assert abs(ol - hl) > 20 or abs(ot - ht) > 20, m
-print("ok calib generate:", json.dumps({"markers": len(man["markers"]), "out": str(OUT)}))
+OUT = Path(__file__).resolve().parent / "out"
+
+
+def main() -> None:
+    man = generate(OUT, title="rmc-calib-check")
+    assert man["title"] == "rmc-calib-check"
+    assert len(man["markers"]) == 4
+    for m in man["markers"]:
+        ix, iy = m["inkml"]
+        nl, nt = m["css_new"]
+        ol, ot = m["css_old_div10"]
+        assert abs(nl - inkml_to_css(ix)) < 0.01
+        assert abs(nt - inkml_to_css(iy)) < 0.01
+        assert abs(ol - ix / 10) < 0.01 and abs(ot - iy / 10) < 0.01
+        # New CSS is much smaller than legacy ÷10 for these inkml values.
+        assert nl < ol and nt < ot
+    html = (OUT / "calib.html").read_text(encoding="utf-8")
+    assert "<title>rmc-calib-check</title>" in html
+    assert "NA" in html and "OA" in html
+    assert man["cross_arm_himetric"] >= 400
+    assert abs(man["css_per_himetric"] - CSS_PER_HIMETRIC) < 1e-12
+    print("ok calib generate:", {"markers": 4, "out": str(OUT)})
+
+
+if __name__ == "__main__":
+    main()
