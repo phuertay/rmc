@@ -10,14 +10,13 @@ Coordinate system (one pipeline for ink and typed text)
 2. InkML:  rm_to_inkml() = (rm - origin) * RM_PER_INK + pad
    Channel units are real himetric (1 inch = 2540). RM_PER_INK = 2540/SCREEN_DPI
    so 1 RM screen-pixel = 1/SCREEN_DPI inch.
-3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540) + CSS_ALIGN_*
+3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540)
    Same RM point → matching ink and absolute HTML (OneNote calib 2026-07-20).
    OneNote zeros fractional left/top to 0,0 — CSS positions must be integers.
-   CSS_ALIGN_* corrects measured residual (green + vs ink center).
+   CSS_ALIGN_* is baked into rm_to_inkml (himetric) so ink and HTML shift together.
+   Applying it only to HTML collapsed the box-top→text gap on al_medio.
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
-5. HTML text div top is shifted up by OneNote's forced <p> 5.5pt margin plus
-   ~font ascent, so the glyph baseline lands on the RM anchor (SVG y is baseline).
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -60,20 +59,17 @@ CSS_Y_PAD = 120
 X_PAD = CSS_X_PAD / CSS_PER_HIMETRIC
 Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 
-# Residual HTML vs ink (rmc-calib-20260720-203433): green + intersection was
-# ~3/4 quarter-tick right and 2 quarter-ticks down from ink center square.
-# Quarter-tick = 250 himetric (arm 1000). Nudge HTML opposite so they meet.
+# Residual OneNote origin (rmc-calib-20260720-203433): green + was ~3/4
+# quarter-tick right and 2 quarter-ticks down from ink center. Nudge opposite.
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
+# Applied in rm_to_inkml so ink (box) and HTML move together — HTML-only nudge
+# ate the RM gap between box top and typed text (line through "A").
 # ponytail: empirical OneNote origin; re-measure if title chrome changes.
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
-
-# Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
-ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
-# RM/SVG text anchors behave like baseline; HTML positions the line-box top.
-# ponytail: 0.8≈Calibri ascent/em; refine if caps still clip.
-TEXT_ASCENT_RATIO = 0.8
+INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric
+INK_ALIGN_DY = round(CSS_ALIGN_DY / CSS_PER_HIMETRIC)
 
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
@@ -96,10 +92,10 @@ def set_page_origin(bbox: Tuple[float, float, float, float]) -> None:
 
 
 def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
-    """RM page point → InkML channel integers (same transform for every stroke)."""
+    """RM page point → InkML channel integers (same transform for ink + HTML)."""
     return (
-        int((x - min_x) * RM_PER_INK + X_PAD),
-        int((y - min_y) * RM_PER_INK + Y_PAD),
+        int((x - min_x) * RM_PER_INK + X_PAD) + INK_ALIGN_DX,
+        int((y - min_y) * RM_PER_INK + Y_PAD) + INK_ALIGN_DY,
     )
 
 
@@ -117,19 +113,9 @@ def rm_delta_to_css(delta_rm: float) -> float:
 
 
 def rm_to_css(x: float, y: float) -> Tuple[float, float]:
-    """RM page point → HTML absolute CSS px (inkml path + measured OneNote nudge)."""
+    """RM page point → HTML absolute CSS px (same InkML path as strokes)."""
     ix, iy = rm_to_inkml(x, y)
-    return inkml_to_css(ix) + CSS_ALIGN_DX, inkml_to_css(iy) + CSS_ALIGN_DY
-
-
-def html_text_origin_css(
-    rm_x: float, rm_y: float, style: si.ParagraphStyle
-) -> Tuple[float, float]:
-    """CSS left/top for a text run so glyph baseline ≈ RM anchor Y."""
-    left, top = rm_to_css(rm_x, rm_y)
-    top -= ONENOTE_P_MARGIN_PX
-    top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO)
-    return left, float(round(top))
+    return inkml_to_css(ix), inkml_to_css(iy)
 
 
 # Legacy names used by brushes / older call sites
@@ -339,7 +325,7 @@ def tree_to_html(tree: SceneTree, output):
         width_px = rm_delta_to_css(float(text.width))
         for run in _text_runs(doc, text.pos_y):
             p0, abs_y = run[0]
-            left, top = html_text_origin_css(text.pos_x, abs_y, p0.style.value)
+            left, top = rm_to_css(text.pos_x, abs_y)
             inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""

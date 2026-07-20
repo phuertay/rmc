@@ -17,11 +17,8 @@ from rmscene import read_tree
 from rmscene.scene_stream import simple_text_document, write_blocks
 from rmscene.text import TextDocument
 from rmc.exporters.inmkl import (
-    CSS_ALIGN_DX,
-    CSS_ALIGN_DY,
     CSS_PER_HIMETRIC,
     RM_PER_INK,
-    html_text_origin_css,
     inkml_to_css,
     rm_delta_to_css,
     rm_to_css,
@@ -80,10 +77,8 @@ def check_pipeline_identity() -> None:
     for x, y in [(-468.0, 146.0), (-468.0, 216.0), (0.0, 500.0), (100.5, 999.25)]:
         ix, iy = rm_to_inkml(x, y)
         cx, cy = rm_to_css(x, y)
-        assert abs(cx - (inkml_to_css(ix) + CSS_ALIGN_DX)) < 1e-6
-        assert abs(cy - (inkml_to_css(iy) + CSS_ALIGN_DY)) < 1e-6, (
-            x, y, ix, iy, cx, cy
-        )
+        assert abs(cx - inkml_to_css(ix)) < 1e-6
+        assert abs(cy - inkml_to_css(iy)) < 1e-6, (x, y, ix, iy, cx, cy)
         # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px (then round)
         ix2, _ = rm_to_inkml(x + 1, y)
         assert abs((ix2 - ix) - RM_PER_INK) < 1.0
@@ -112,7 +107,7 @@ def check_text_y_matches_ink_anchors(path: Path) -> None:
     for p in doc.contents:
         if str(p).strip():
             if not in_run:
-                _l, top = html_text_origin_css(text.pos_x, ypos, p.style.value)
+                _l, top = rm_to_css(text.pos_x, ypos)
                 run_tops.append(round(top, 2))
                 in_run = True
         else:
@@ -151,7 +146,7 @@ def check_ink_text_same_origin(path: Path) -> None:
     ypos = text.pos_y + TEXT_TOP_Y
     for p in doc.contents:
         if str(p).strip():
-            _l, expect = html_text_origin_css(text.pos_x, ypos, p.style.value)
+            _l, expect = rm_to_css(text.pos_x, ypos)
             assert abs(tops[0] - expect) < 0.6, (tops[0], expect)
             break
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
