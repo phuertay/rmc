@@ -13,8 +13,8 @@ Coordinate system (one pipeline for ink and typed text)
 3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540) + CSS_ALIGN_*
    Same RM point → matching absolute HTML (OneNote calib 2026-07-20).
    OneNote zeros fractional left/top to 0,0 — CSS positions must be integers.
-   CSS_ALIGN_* stays on HTML only for Y (no ink height nudge).
-   Strokes get CSS_ALIGN_DX + INK_EXTRA_DX on X so the box clears typed text.
+   CSS_ALIGN_* on HTML; strokes add CSS_ALIGN_DX + INK_EXTRA_* so the box
+   clears typed text (live-tuned on al_medio).
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 
@@ -62,15 +62,17 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Residual OneNote origin (rmc-calib-20260720-203433): green + was ~3/4
 # quarter-tick right and 2 quarter-ticks down from ink center. Nudge opposite.
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
-# Y: HTML-only (CSS_ALIGN_DY) — do not shift ink height.
-# X: strokes get CSS_ALIGN_DX + small extra left so box clears "A".
-# ponytail: empirical; tweak INK_EXTRA_DX_CSS if left edge still off.
+# Y: HTML-only CSS_ALIGN_DY; tiny ink-only DY from live al_medio tweak.
+# X: strokes get CSS_ALIGN_DX + small extra so box clears "A".
+# ponytail: empirical; last nudge from inkleft5 (+2 right, −1 up).
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = -5  # strokes only; −10 was too far left
+INK_EXTRA_DX_CSS = -3  # strokes only (−5 was 2px too far left)
+INK_EXTRA_DY_CSS = -1  # strokes only
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
+INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
@@ -296,7 +298,8 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
     move_x, move_y = move_pos
     for pt in item.points:
         scaled_x, scaled_y = rm_to_inkml(pt.x + move_x, pt.y + move_y)
-        scaled_x += INK_ALIGN_DX + INK_EXTRA_DX  # X only; Y stays unshifted
+        scaled_x += INK_ALIGN_DX + INK_EXTRA_DX
+        scaled_y += INK_EXTRA_DY
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
         coord.append(f"{scaled_x} {scaled_y} {scaled_pressure}")
     coord_str = ",".join(coord)
