@@ -128,6 +128,9 @@ def check_text_ink_text_fields(path: Path) -> None:
     # Gap is in CSS px after himetric scale (~0.42× RM).
     assert tops[-1] - tops[0] >= 20, tops
     assert "This is typed" in html and "And this is typed again" in html
+    # No <p> — OneNote forces 5.5pt paragraph margins that shift glyphs.
+    assert "<p" not in html.lower(), html
+    assert "font-size:" in html and "line-height:" in html
 
 
 def check_ink_text_same_origin(path: Path) -> None:

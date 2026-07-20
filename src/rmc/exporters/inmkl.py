@@ -123,24 +123,14 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
+def rm_font_size_css(style: si.ParagraphStyle) -> float:
+    """CSS font-size (px) from RM line box so type scales with ink."""
+    # ponytail: 0.55≈cap-height share of RM line; tweak if OneNote still looks off
+    return float(round(rm_line_height_css(style) * 0.55))
+
+
 def _html_escape(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-def _paragraph_css(style: si.ParagraphStyle, props: dict) -> str:
-    lh = rm_line_height_css(style)
-    parts = [f"margin: 0", f"line-height: {lh:.2f}px"]
-    if style == si.ParagraphStyle.HEADING:
-        parts += ["font-size: 16pt", "font-weight: bold"]
-    elif style == si.ParagraphStyle.BOLD:
-        parts.append("font-weight: bold")
-    elif style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
-        parts.append("padding-left: 1.2em")
-    for k, v in props.items():
-        if k == "font-weight" and style in (si.ParagraphStyle.HEADING, si.ParagraphStyle.BOLD):
-            continue
-        parts.append(f"{k}: {v}")
-    return "; ".join(parts)
 
 
 def _format_line(p) -> str:
@@ -152,35 +142,39 @@ def _format_line(p) -> str:
     return _html_escape(raw).replace("\n", "<br/>")
 
 
+def _run_span_style(style: si.ParagraphStyle) -> str:
+    """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
+    lh = rm_line_height_css(style)
+    fs_pt = rm_font_size_css(style) * 72 / 96  # px → pt
+    parts = [
+        "font-family:Calibri",
+        f"font-size:{fs_pt:.1f}pt",
+        f"line-height:{lh:.0f}px",
+    ]
+    if style in (si.ParagraphStyle.HEADING, si.ParagraphStyle.BOLD):
+        parts.append("font-weight:bold")
+    elif style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
+        parts.append("padding-left:1.2em")
+    return ";".join(parts)
+
+
 def _emit_run_inner(paragraphs) -> str:
-    parts: List[str] = []
-    plain_lines: List[str] = []
-    plain_props: dict = {}
-
-    def flush_plain():
-        nonlocal plain_lines, plain_props
-        if not plain_lines:
-            return
-        body = "<br/>".join(plain_lines)
-        css = _paragraph_css(si.ParagraphStyle.PLAIN, plain_props)
-        parts.append(f'<p style="{css}">{body}</p>')
-        plain_lines = []
-        plain_props = {}
-
+    """Join run lines with <br/> inside one styled span (no <p>)."""
+    if not paragraphs:
+        return ""
+    # Dominant style = first line; rare mixed runs get bold/heading via nested spans.
+    style0 = paragraphs[0].style.value
+    bits = []
     for p in paragraphs:
-        style = p.style.value
-        props = dict(p.contents[0].properties) if p.contents else {}
         line = _format_line(p)
-        if style == si.ParagraphStyle.PLAIN:
-            if not plain_lines:
-                plain_props = props
-            plain_lines.append(line)
+        if not line:
             continue
-        flush_plain()
-        css = _paragraph_css(style, props)
-        parts.append(f'<p style="{css}">{line}</p>')
-    flush_plain()
-    return "".join(parts)
+        if p.style.value == style0:
+            bits.append(line)
+        else:
+            bits.append(f'<span style="{_run_span_style(p.style.value)}">{line}</span>')
+    body = "<br/>".join(bits)
+    return f'<span style="{_run_span_style(style0)}">{body}</span>'
 
 
 def _text_runs(doc: TextDocument, text_pos_y: float):
@@ -316,6 +310,7 @@ def tree_to_html(tree: SceneTree, output):
     set_page_origin(get_bounding_box(tree.root, anchor_pos))
 
     page_title = Path(output.name).stem
+    # Typography on absolute divs (not <p>) — Graph rewrites p margins to 5.5pt.
     output.write(f"""<html>
     <head>
         <title>{page_title}</title>
@@ -330,9 +325,7 @@ def tree_to_html(tree: SceneTree, output):
             inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""
-                <div style="position:absolute;left:{left:.0f}px;top:{top:.0f}px;width:{width_px:.0f}px">
-                    {inner}
-                </div>"""
+                <div style="position:absolute;left:{left:.0f}px;top:{top:.0f}px;width:{width_px:.0f}px">{inner}</div>"""
             )
     output.write("""
     </body>
