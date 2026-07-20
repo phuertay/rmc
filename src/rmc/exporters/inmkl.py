@@ -1,11 +1,24 @@
 __author__ = "Michael Kushnir"
 __version__ = "1.1"
 
+"""
+Convert .rm SceneTree to InkML + OneNote HTML.
+
+Coordinate system (one pipeline for ink and typed text)
+-------------------------------------------------------
+1. RM page units, origin at the frozen content bbox (min_x, min_y).
+2. InkML:  rm_to_inkml() = (rm - origin) * RM_PER_INK + pad
+   Channel units are labeled himetric (OneNote requirement). RM_PER_INK is the
+   export scale (10), shared by every stroke and every text corner.
+3. HTML CSS px: inkml_to_css() = inkml / RM_PER_INK
+   so the same RM point yields matching ink and absolute HTML positions.
+4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
+   not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
+
+Pads (48, 120) CSS px match OneNote defaults below the title; stored in inkml units.
+"""
 
 from rmscene.scene_items import PenColor
-"""
-Convert .rm SceneTree to InkML-supported XML file.
-"""
 import logging
 from pathlib import Path
 from rmscene import SceneTree
@@ -20,14 +33,19 @@ from .writing_tools import Pen, RM_PALETTE
 A4_HEIGHT_MM = 297
 A4_WIDTH_MM = 210
 ASPECT_RATIO = A4_WIDTH_MM / A4_HEIGHT_MM
-# scale() pads in the same units as InkML channel values. HTML CSS px cancel
-# WIDTH/HEIGHT_CONV below, so these pads are "RM-equivalent" CSS px after convert:
-# 48/120 match OneNote defaults for content below the title.
-X_PAD = 48 * 10
-Y_PAD = 120 * 10
-WIDTH_CONV_CONSTANT = 10
-HEIGHT_CONV_CONSTANT = 10
+
+# RM → InkML scale (also brush size). CSS cancels this so RM deltas match.
+RM_PER_INK = 10
+WIDTH_CONV_CONSTANT = RM_PER_INK  # brush / legacy name
+HEIGHT_CONV_CONSTANT = RM_PER_INK
 PRESSURE_CONV_CONSTANT = 128
+
+# OneNote HTML defaults below title (CSS px), expressed in InkML units.
+CSS_X_PAD = 48
+CSS_Y_PAD = 120
+X_PAD = CSS_X_PAD * RM_PER_INK
+Y_PAD = CSS_Y_PAD * RM_PER_INK
+
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
                  "xmlns:msink=\"http://schemas.microsoft.com/ink/2010/main\""
@@ -37,46 +55,42 @@ XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 
 min_x = min_y = max_x = max_y = 0
 trace_id = 1
-_logger = logging.getLogger(__name__) # Initialize module logger
+_logger = logging.getLogger(__name__)
 
 
-# ----FUNCTIONS-----
+# ----COORDINATE PIPELINE-----
 
-def scale(x: float, y: float) -> Tuple[int, int]:
+def set_page_origin(bbox: Tuple[float, float, float, float]) -> None:
+    """Freeze RM origin used by every later rm_to_inkml / rm_to_css call."""
     global min_x, max_x, min_y, max_y
-
-    x_range = max_x - min_x
-    y_range = max_y - min_y
-
-    if x_range == 0:
-        x_range = 1
-    if y_range == 0:
-        y_range = 1
-
-    # Normalize to (0, 1)
-    x_norm = (x - min_x) / x_range
-    y_norm = (y - min_y) / y_range
-
-    # Scale uniformly and add padding
-    new_x = int(x_norm * x_range * WIDTH_CONV_CONSTANT + X_PAD)
-    new_y = int(y_norm * y_range * HEIGHT_CONV_CONSTANT + Y_PAD)
-
-    return new_x, new_y
+    min_x, max_x, min_y, max_y = bbox
 
 
-def scale_to_css_px(value: float) -> float:
-    """InkML scale() units → CSS px for absolute HTML.
+def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
+    """RM page point → InkML channel integers (same transform for every stroke)."""
+    return (
+        int((x - min_x) * RM_PER_INK + X_PAD),
+        int((y - min_y) * RM_PER_INK + Y_PAD),
+    )
 
-    OneNote draws InkML (units=himetric) and HTML (CSS px) in one page space.
-    True 96-DPI himetric→px (÷2540/96) pins typed text at the top-left while
-    ink lays out ~2.6× larger — they no longer share the notebook plane.
-    Cancel WIDTH/HEIGHT_CONV instead so RM deltas match the ink export scale.
-    """
-    return value / WIDTH_CONV_CONSTANT
+
+def inkml_to_css(value: float) -> float:
+    """InkML channel value → CSS px (inverse of RM_PER_INK)."""
+    return value / RM_PER_INK
+
+
+def rm_to_css(x: float, y: float) -> Tuple[float, float]:
+    """RM page point → HTML absolute CSS px. Same RM point as rm_to_inkml."""
+    ix, iy = rm_to_inkml(x, y)
+    return inkml_to_css(ix), inkml_to_css(iy)
+
+
+# Legacy names used by brushes / older call sites
+scale = rm_to_inkml
+scale_to_css_px = inkml_to_css
 
 
 def rm_line_height_css(style: si.ParagraphStyle) -> float:
-    """RM LINE_HEIGHTS → CSS px (same cancel-CONV mapping as scale_to_css_px)."""
     return float(LINE_HEIGHTS.get(style, 70))
 
 
@@ -85,7 +99,6 @@ def _html_escape(s: str) -> str:
 
 
 def _paragraph_css(style: si.ParagraphStyle, props: dict) -> str:
-    """Build inline CSS for one flowing paragraph inside the text block div."""
     lh = rm_line_height_css(style)
     parts = [f"margin: 0", f"line-height: {lh:.2f}px"]
     if style == si.ParagraphStyle.HEADING:
@@ -111,7 +124,6 @@ def _format_line(p) -> str:
 
 
 def _emit_run_inner(paragraphs) -> str:
-    """HTML inside one absolute div for a contiguous non-blank run."""
     parts: List[str] = []
     plain_lines: List[str] = []
     plain_props: dict = {}
@@ -142,21 +154,21 @@ def _emit_run_inner(paragraphs) -> str:
     return "".join(parts)
 
 
-def _text_runs(doc: TextDocument):
-    """Group non-empty paragraphs into runs separated by blank lines.
+def _text_runs(doc: TextDocument, text_pos_y: float):
+    """Yield (paragraphs, absolute_rm_y) per non-blank run.
 
-    Each run → one absolute OneNote field. Blank lines only advance Y so
-    handwriting can sit between typed blocks (text / ink / text pages).
+    absolute_rm_y matches build_anchor_pos (ink anchors), not svg.draw_text.
     """
-    y_offset = TEXT_TOP_Y
-    run = []  # (paragraph, rm_y)
+    # Same walk as build_anchor_pos: record Y, then advance.
+    ypos = text_pos_y + TEXT_TOP_Y
+    run = []
     for p in doc.contents:
-        y_offset += LINE_HEIGHTS.get(p.style.value, 70)
         if str(p).strip():
-            run.append((p, y_offset))
+            run.append((p, ypos))
         elif run:
             yield run
             run = []
+        ypos += LINE_HEIGHTS.get(p.style.value, 70)
     if run:
         yield run
 
@@ -168,30 +180,26 @@ def tree_to_xml(tree: SceneTree, output):
     :param output: IO stream of the output XML file.
     """
     _logger.debug("Exporting %d items to InkML", len(list(tree.walk())))
-    # ----XML header and root----
     output.write(XML_HEADER)
-    configure_ink(tree, output) # Add pen configurations to file header
-    # ---XML ink data---
-    global min_x, max_x, min_y, max_y
+    configure_ink(tree, output)
+    global trace_id
     anchor_pos = build_anchor_pos(tree.root_text)
-    min_x, max_x, min_y, max_y = get_bounding_box(tree.root, anchor_pos)
+    set_page_origin(get_bounding_box(tree.root, anchor_pos))
     output.write("  <inkml:traceGroup>\n")
     draw_tree(tree.root, output, anchor_pos)
     output.write("  </inkml:traceGroup>\n")
-    global trace_id
-    _logger.debug("Finished InkML export: %d traces", trace_id-1)
+    _logger.debug("Finished InkML export: %d traces", trace_id - 1)
     output.write("</inkml:ink>\n")
 
 
-def draw_tree(item: si.Group, output, anchor_pos, move_pos = (0,0)):
+def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
     for child_id in item.children:
         child = item.children[child_id]
         _logger.debug("Group child: %s %s", child_id, type(child))
         if isinstance(child, si.Group):
-            # A group (Pen Type) has anchor coordinates to which the contained strokes' point coordinates are relative
             move_x, move_y = move_pos
             x, y = get_anchor(child, anchor_pos)
-            draw_tree(child, output, anchor_pos,(x + move_x, y + move_y))
+            draw_tree(child, output, anchor_pos, (x + move_x, y + move_y))
         if isinstance(child, si.Line):
             global trace_id
             draw_stroke(child, output, trace_id, move_pos)
@@ -199,11 +207,7 @@ def draw_tree(item: si.Group, output, anchor_pos, move_pos = (0,0)):
 
 
 def configure_ink(tree: SceneTree, output):
-    """
-    Appends ink metadata to file header
-    """
     output.write("  <inkml:definitions>")
-    # Add context data. Channel F (optional) - stands for force (pressure).
     output.write("""
     <inkml:context xml:id="ctxCoordinatesWithPressure">
         <inkml:inkSource xml:id="inkSrcCoordinatesWithPressure">
@@ -220,7 +224,6 @@ def configure_ink(tree: SceneTree, output):
         </inkml:inkSource>
     </inkml:context>
     """)
-    # Add brush types
     pens_set = fetch_used_inks(tree)
     for pen in pens_set:
         output.write(f"""
@@ -248,7 +251,6 @@ def fetch_used_inks(tree: SceneTree) -> List[Pen]:
     ink_ids = []
     for item in tree.walk():
         if isinstance(item, si.Line):
-            # TODO - temporary fix until rmscene supports highlighter/shader colors
             color = item.color.value if item.color.value != 9 else PenColor.YELLOW.value
             pen = Pen.create(item.tool.value, color, item.thickness_scale)
             gen_id = generate_id_from_pen(pen)
@@ -258,21 +260,17 @@ def fetch_used_inks(tree: SceneTree) -> List[Pen]:
     return pens
 
 
-def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] = (0,0)) -> None:
+def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] = (0, 0)) -> None:
     if _logger.root.level == logging.DEBUG:
         _logger.debug("Drawing stroke %d from node %s with %d points", trace_id, item.node_id, len(item.points))
     tid = str(trace_id)
     coord = []
-    # The page origin is frozen in tree_to_xml/tree_to_html. Do NOT update the
-    # bbox here: mutating it mid-draw would give later strokes (and the text) a
-    # different mapping than earlier strokes.
     move_x, move_y = move_pos
     for pt in item.points:
-        scaled_x, scaled_y = scale(pt.x + move_x, pt.y + move_y)
+        scaled_x, scaled_y = rm_to_inkml(pt.x + move_x, pt.y + move_y)
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
         coord.append(f"{scaled_x} {scaled_y} {scaled_pressure}")
     coord_str = ",".join(coord)
-    # TODO - temporary fix until rmscene supports highlighter/shader colors
     color = item.color.value if item.color.value != 9 else PenColor.YELLOW.value
     pen = Pen.create(item.tool.value, color, item.thickness_scale)
     brush_id = generate_id_from_pen(pen)
@@ -283,11 +281,10 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
 
 
 def tree_to_html(tree: SceneTree, output):
-    """Emit OneNote HTML: absolute text runs (gaps for ink), himetric-aligned CSS."""
+    """Emit OneNote HTML using the same RM→inkml→CSS map as tree_to_xml."""
     text = tree.root_text
-    global min_x, max_x, min_y, max_y
     anchor_pos = build_anchor_pos(tree.root_text)
-    min_x, max_x, min_y, max_y = get_bounding_box(tree.root, anchor_pos)
+    set_page_origin(get_bounding_box(tree.root, anchor_pos))
 
     page_title = Path(output.name).stem
     output.write(f"""<html>
@@ -297,12 +294,10 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        width_px = scale_to_css_px(float(text.width) * WIDTH_CONV_CONSTANT)
-        for run in _text_runs(doc):
-            _p0, rm_y = run[0]
-            hx, hy = scale(text.pos_x, text.pos_y + rm_y)
-            left = scale_to_css_px(hx)
-            top = scale_to_css_px(hy)
+        width_px = float(text.width)
+        for run in _text_runs(doc, text.pos_y):
+            _p0, abs_y = run[0]
+            left, top = rm_to_css(text.pos_x, abs_y)
             inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""
