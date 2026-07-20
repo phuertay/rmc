@@ -19,12 +19,16 @@ def main() -> None:
         ol, ot = m["css_old_div10"]
         assert abs(nl - inkml_to_css(ix)) < 0.01
         assert abs(nt - inkml_to_css(iy)) < 0.01
-        assert abs(ol - ix / 10) < 0.01 and abs(ot - iy / 10) < 0.01
+        assert abs(ol - round(ix / 10)) < 0.01 and abs(ot - round(iy / 10)) < 0.01
+        assert float(nl).is_integer() and float(nt).is_integer()
         # New CSS is much smaller than legacy ÷10 for these inkml values.
         assert nl < ol and nt < ot
     html = (OUT / "calib.html").read_text(encoding="utf-8")
     assert "<title>rmc-calib-check</title>" in html
     assert "NA" in html and "OA" in html
+    # OneNote rejects fractional left/top — emitter must use integers.
+    assert "left:346px" in html or "left:346.0px" not in html
+    assert ".17px" not in html and ".93px" not in html
     assert man["cross_arm_himetric"] >= 400
     assert abs(man["css_per_himetric"] - CSS_PER_HIMETRIC) < 1e-12
     print("ok calib generate:", {"markers": 4, "out": str(OUT)})

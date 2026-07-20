@@ -81,7 +81,7 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
         ix, iy = rm_to_inkml(rm_x, rm_y)
         new_l, new_t = rm_to_css(rm_x, rm_y)
         # Legacy cancel-CONV CSS (inkml/10) — wrong for OneNote, kept for contrast.
-        old_l, old_t = ix / 10.0, iy / 10.0
+        old_l, old_t = float(round(ix / 10.0)), float(round(iy / 10.0))
         h, v = _cross_inkml(ix, iy)
         traces.extend([h, v])
         markers.append(
@@ -148,24 +148,23 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
         lab = m["label"]
         nl, nt = m["css_new"]
         ol, ot = m["css_old_div10"]
-        # Bright colors; PDF export often collapses absolute divs — judge in OneNote UI.
         divs.append(
-            f'<div style="position: absolute; left: {nl:.2f}px; top: {nt:.2f}px; '
-            f'font-size: 28pt; font-weight: bold; color: #00aa00">N{lab}</div>'
+            f'<div style="position:absolute;left:{nl:.0f}px;top:{nt:.0f}px;width:80px">'
+            f'<p style="margin:0;font-size:28pt;font-weight:bold;color:#00aa00">N{lab}</p></div>'
         )
         divs.append(
-            f'<div style="position: absolute; left: {ol:.2f}px; top: {ot:.2f}px; '
-            f'font-size: 28pt; font-weight: bold; color: #cc0000">O{lab}</div>'
+            f'<div style="position:absolute;left:{ol:.0f}px;top:{ot:.0f}px;width:80px">'
+            f'<p style="margin:0;font-size:28pt;font-weight:bold;color:#cc0000">O{lab}</p></div>'
         )
     divs.append(
-        '<div style="position: absolute; left: 48px; top: 40px; width: 560px; '
-        'font-family: Calibri; font-size: 11pt">'
+        '<div style="position:absolute;left:48px;top:40px;width:560px">'
+        '<p style="margin:0;font-family:Calibri;font-size:11pt">'
         f"<b>{title}</b><br/>"
-        "Open in OneNote app/web — PDF export piles letters at the top (ignore PDF).<br/>"
+        "Judge in OneNote (not PDF). Fractional CSS left/top was zeroed by Graph — now integers.<br/>"
         "Ink crosses = RM truth.<br/>"
-        "<span style='color:#00aa00'>N*</span> = new CSS (inkml×96/2540) — should sit on cross.<br/>"
+        "<span style='color:#00aa00'>N*</span> = new CSS (inkml*96/2540) — should sit on cross.<br/>"
         "<span style='color:#cc0000'>O*</span> = old CSS (inkml/10) — should miss."
-        "</div>"
+        "</p></div>"
     )
     html = f"""<html>
 <head><title>{title}</title></head>

@@ -61,7 +61,7 @@ def _ink_css_y_range(xml: str) -> tuple[float, float] | None:
 
 
 def _abs_tops(html: str) -> list[float]:
-    return [float(t) for t in re.findall(r"top: ([0-9.]+)px", html)]
+    return [float(t) for t in re.findall(r"top:\s*([0-9.]+)px", html)]
 
 
 def ensure_fixture() -> Path:
@@ -80,11 +80,12 @@ def check_pipeline_identity() -> None:
         assert abs(cx - inkml_to_css(ix)) < 1e-6 and abs(cy - inkml_to_css(iy)) < 1e-6, (
             x, y, ix, iy, cx, cy
         )
-        # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px
+        # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px (then round)
         ix2, _ = rm_to_inkml(x + 1, y)
         assert abs((ix2 - ix) - RM_PER_INK) < 1.0
-        assert abs(inkml_to_css(ix2) - inkml_to_css(ix) - rm_delta_to_css(1.0)) < CSS_PER_HIMETRIC
+        assert abs(inkml_to_css(ix2) - inkml_to_css(ix) - rm_delta_to_css(1.0)) <= 1.0
         assert abs(CSS_PER_HIMETRIC - 96 / 2540) < 1e-15
+        assert float(cx).is_integer() and float(cy).is_integer()
 
 
 def check_text_y_matches_ink_anchors(path: Path) -> None:

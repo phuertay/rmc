@@ -10,8 +10,9 @@ Coordinate system (one pipeline for ink and typed text)
 2. InkML:  rm_to_inkml() = (rm - origin) * RM_PER_INK + pad
    Channel units are real himetric (1 inch = 2540). RM_PER_INK = 2540/SCREEN_DPI
    so 1 RM screen-pixel = 1/SCREEN_DPI inch.
-3. HTML CSS px: inkml_to_css() = inkml * 96/2540  (CSS px at 96 DPI)
+3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540)
    Same RM point → matching ink and absolute HTML (OneNote calib 2026-07-20).
+   OneNote zeros fractional left/top to 0,0 — CSS positions must be integers.
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 
@@ -85,13 +86,16 @@ def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
 
 
 def inkml_to_css(value: float) -> float:
-    """InkML himetric → CSS px at 96 DPI."""
-    return value * CSS_PER_HIMETRIC
+    """InkML himetric → CSS px at 96 DPI.
+
+    Rounded to int: OneNote Graph drops fractional left/top to 0,0.
+    """
+    return float(round(value * CSS_PER_HIMETRIC))
 
 
 def rm_delta_to_css(delta_rm: float) -> float:
-    """RM length (no pad) → CSS px."""
-    return delta_rm * RM_PER_INK * CSS_PER_HIMETRIC
+    """RM length (no pad) → CSS px (integer)."""
+    return float(round(delta_rm * RM_PER_INK * CSS_PER_HIMETRIC))
 
 
 def rm_to_css(x: float, y: float) -> Tuple[float, float]:
@@ -316,7 +320,7 @@ def tree_to_html(tree: SceneTree, output):
             inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""
-                <div style="position: absolute; left: {left:.2f}px; top: {top:.2f}px; width: {width_px:.2f}px">
+                <div style="position:absolute;left:{left:.0f}px;top:{top:.0f}px;width:{width_px:.0f}px">
                     {inner}
                 </div>"""
             )
