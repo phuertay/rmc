@@ -148,21 +148,23 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
         lab = m["label"]
         nl, nt = m["css_new"]
         ol, ot = m["css_old_div10"]
+        # Bright colors; PDF export often collapses absolute divs — judge in OneNote UI.
         divs.append(
             f'<div style="position: absolute; left: {nl:.2f}px; top: {nt:.2f}px; '
-            f'font-size: 22pt; font-weight: bold; color: #080">N{lab}</div>'
+            f'font-size: 28pt; font-weight: bold; color: #00aa00">N{lab}</div>'
         )
         divs.append(
             f'<div style="position: absolute; left: {ol:.2f}px; top: {ot:.2f}px; '
-            f'font-size: 18pt; font-weight: bold; color: #c00">O{lab}</div>'
+            f'font-size: 28pt; font-weight: bold; color: #cc0000">O{lab}</div>'
         )
     divs.append(
-        '<div style="position: absolute; left: 48px; top: 40px; width: 520px; '
+        '<div style="position: absolute; left: 48px; top: 40px; width: 560px; '
         'font-family: Calibri; font-size: 11pt">'
         f"<b>{title}</b><br/>"
-        "Ink crosses = RM truth (true himetric).<br/>"
-        "<span style='color:#080'>N*</span> = new CSS (inkml×96/2540) — should sit on cross.<br/>"
-        "<span style='color:#c00'>O*</span> = old CSS (inkml/10) — should miss."
+        "Open in OneNote app/web — PDF export piles letters at the top (ignore PDF).<br/>"
+        "Ink crosses = RM truth.<br/>"
+        "<span style='color:#00aa00'>N*</span> = new CSS (inkml×96/2540) — should sit on cross.<br/>"
+        "<span style='color:#cc0000'>O*</span> = old CSS (inkml/10) — should miss."
         "</div>"
     )
     html = f"""<html>
