@@ -42,23 +42,21 @@ or Docker services.
   The virtualenv lives under `~/.cache/pypoetry/virtualenvs/`.
 
 ### OneNote ink/text scale calibration
-Local RM/SVG checks cannot prove OneNote’s himetric vs CSS px mapping. Use the
-self-describing calib page (ink crosses + letters **O**=our `/10` CSS, **H**=true
-himetric CSS):
+OneNote treats InkML channels as real himetric. Export uses
+`RM_PER_INK = 2540/226` and `css = inkml * 96/2540` (see `inmkl.py`).
+
+Verify with the calib page (large ink crosses; **N**=new CSS, **O**=legacy ÷10):
 
 ```bash
-poetry run python tests/onenote_calib/generate_calib_page.py
+poetry run python tests/onenote_calib/generate_calib_page.py --title rmc-calib-$(date -u +%Y%m%d-%H%M%S)
 poetry run python tests/onenote_calib/check_generate.py
 # needs Graph token + section id (never commit tokens):
 export ONENOTE_TOKEN=… ONENOTE_SECTION=…
 poetry run python tests/onenote_calib/upload_and_fit.py --upload
-# open the page → see whether O or H sits on each cross, then:
-poetry run python tests/onenote_calib/upload_and_fit.py --apply ours   # or true_himetric
 ```
 
-That writes `tests/onenote_calib/out/fit_result.json` with the mapping to put in
-`inmkl.py`. Readback alone cannot reveal visual pixels (OneNote stores ink as
-himetric and HTML as CSS); the O-vs-H page is the experiment.
+N* should sit on each cross; O* should miss. Readback alone cannot reveal visual
+pixels; the N-vs-O page is the experiment.
 
 ### Token-efficiency stack (ponytail + caveman ultra + token-savior)
 
