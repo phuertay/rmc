@@ -61,10 +61,11 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Residual HTML vs ink (rmc-calib-20260720-203433): green + intersection was
 # ~3/4 quarter-tick right and 2 quarter-ticks down from ink center square.
 # Quarter-tick = 250 himetric (arm 1000). Nudge HTML opposite so they meet.
+# Fine-tuned on 204924: still ~1px low → DY -20.
 # ponytail: empirical OneNote origin; re-measure if title chrome changes.
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
-CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
+CSS_ALIGN_DY = -20
 
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
