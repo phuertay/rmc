@@ -14,7 +14,7 @@ Coordinate system (one pipeline for ink and typed text)
    Same RM point → matching ink and absolute HTML (OneNote calib 2026-07-20).
    OneNote zeros fractional left/top to 0,0 — CSS positions must be integers.
    CSS_ALIGN_* is baked into rm_to_inkml (himetric) so ink and HTML shift together.
-   Applying it only to HTML collapsed the box-top→text gap on al_medio.
+   Strokes get an extra INK_EXTRA_DX (left) so the box clears typed text.
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 
@@ -62,14 +62,16 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Residual OneNote origin (rmc-calib-20260720-203433): green + was ~3/4
 # quarter-tick right and 2 quarter-ticks down from ink center. Nudge opposite.
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
-# Applied in rm_to_inkml so ink (box) and HTML move together — HTML-only nudge
-# ate the RM gap between box top and typed text (line through "A").
-# ponytail: empirical OneNote origin; re-measure if title chrome changes.
+# Shared via rm_to_inkml so ink + HTML keep RM spacing (HTML-only ate Y gap).
+# Extra ink-only X: left box stroke was still through "A" on al_medio.
+# ponytail: empirical; tweak INK_EXTRA_DX_CSS if left edge still clips type.
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric
 INK_ALIGN_DY = round(CSS_ALIGN_DY / CSS_PER_HIMETRIC)
+INK_EXTRA_DX_CSS = -10  # strokes only; clears left vertical vs typed text
+INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
@@ -295,6 +297,7 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
     move_x, move_y = move_pos
     for pt in item.points:
         scaled_x, scaled_y = rm_to_inkml(pt.x + move_x, pt.y + move_y)
+        scaled_x += INK_EXTRA_DX
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
         coord.append(f"{scaled_x} {scaled_y} {scaled_pressure}")
     coord_str = ",".join(coord)
