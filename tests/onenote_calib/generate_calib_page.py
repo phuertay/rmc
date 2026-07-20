@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """Build a OneNote calibration page (InkML + HTML) from known RM points.
 
-After the true-himetric fix, ink and HTML share one pipeline. This page checks
-that the new CSS lands on the ink, and shows where the old ÷10 CSS would sit:
+Precision page for measuring residual HTML vs ink offset:
 
-  - Ink: large crosses at known RM corners (current rm_to_inkml)
-  - Letter N: HTML at current rm_to_css (should sit on the cross)
-  - Letter O: HTML at legacy ÷10 mapping of the same inkml (should miss)
+  - Ink: thin cross + filled center square + 1/4-arm ticks (unambiguous center)
+  - Green "+": HTML at current rm_to_css (integer px). Top-left of the "+"
+    glyph box is the CSS point; judge where the "+" intersection sits vs ink center.
+  - Red "x": legacy inkml/10 (should miss)
 
-Also draws ink tick rulers (0..1000 RM) on X/Y for stretch checks.
-
-Output (default tests/onenote_calib/out/):
-  calib.xml  calib.html  manifest.json
+Report e.g. "A: + center is 1/4 arm right, 1/8 arm down from ink square".
 
 Usage:
   poetry run python tests/onenote_calib/generate_calib_page.py
-  poetry run python tests/onenote_calib/generate_calib_page.py --title rmc-calib-20260720-195746
+  poetry run python tests/onenote_calib/generate_calib_page.py --title rmc-calib-…
 """
 from __future__ import annotations
 
@@ -29,7 +26,6 @@ from rmc.exporters.inmkl import (
     RM_PER_INK,
     X_PAD,
     Y_PAD,
-    inkml_to_css,
     set_page_origin,
     rm_to_inkml,
     rm_to_css,
@@ -44,15 +40,35 @@ CORNERS_RM = [
     (0.0, 600.0, "C"),
     (400.0, 600.0, "D"),
 ]
-# ~0.2 inch arms so crosses are obvious in OneNote / PDF.
-CROSS_ARM_HIMETRIC = 500
+# ~0.4 inch arms; quarter ticks easy to read.
+CROSS_ARM_HIMETRIC = 1000
+CENTER_HALF_HIMETRIC = 40  # filled square ±40 himetric (~1.5 CSS px)
 TRUE_HIMETRIC_PER_CSS = 1 / CSS_PER_HIMETRIC
 
 
-def _cross_inkml(cx: int, cy: int, arm: int = CROSS_ARM_HIMETRIC) -> tuple[str, str]:
-    h = [f"{cx - arm} {cy} 64", f"{cx} {cy} 96", f"{cx + arm} {cy} 64"]
-    v = [f"{cx} {cy - arm} 64", f"{cx} {cy} 96", f"{cx} {cy + arm} 64"]
-    return ",".join(h), ",".join(v)
+def _trace_line(x0: int, y0: int, x1: int, y1: int, f: int = 80) -> str:
+    return f"{x0} {y0} {f},{x1} {y1} {f}"
+
+
+def _cross_traces(cx: int, cy: int, arm: int = CROSS_ARM_HIMETRIC) -> list[str]:
+    """Thin + arms, quarter ticks, and a small filled center square."""
+    traces = [
+        _trace_line(cx - arm, cy, cx + arm, cy, 96),
+        _trace_line(cx, cy - arm, cx, cy + arm, 96),
+    ]
+    # Quarter / half ticks on each arm (perpendicular hash marks).
+    tick = max(arm // 10, 30)
+    for d in (arm // 4, arm // 2, 3 * arm // 4):
+        for sx, sy in ((-d, 0), (d, 0), (0, -d), (0, d)):
+            if sx:
+                traces.append(_trace_line(cx + sx, cy - tick, cx + sx, cy + tick, 64))
+            else:
+                traces.append(_trace_line(cx - tick, cy + sy, cx + tick, cy + sy, 64))
+    # Filled center square (several strokes) = exact RM point.
+    h = CENTER_HALF_HIMETRIC
+    for dy in range(-h, h + 1, max(h // 4, 1)):
+        traces.append(_trace_line(cx - h, cy + dy, cx + h, cy + dy, 120))
+    return traces
 
 
 def _tick_traces(axis: str) -> list[str]:
@@ -80,10 +96,8 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
     for rm_x, rm_y, label in CORNERS_RM:
         ix, iy = rm_to_inkml(rm_x, rm_y)
         new_l, new_t = rm_to_css(rm_x, rm_y)
-        # Legacy cancel-CONV CSS (inkml/10) — wrong for OneNote, kept for contrast.
         old_l, old_t = float(round(ix / 10.0)), float(round(iy / 10.0))
-        h, v = _cross_inkml(ix, iy)
-        traces.extend([h, v])
+        traces.extend(_cross_traces(ix, iy))
         markers.append(
             {
                 "label": label,
@@ -99,8 +113,8 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
 
     brush = """
     <inkml:brush xml:id="calib_pen">
-        <inkml:brushProperty name="width" value="60" units="himetric" />
-        <inkml:brushProperty name="height" value="60" units="himetric" />
+        <inkml:brushProperty name="width" value="35" units="himetric" />
+        <inkml:brushProperty name="height" value="35" units="himetric" />
         <inkml:brushProperty name="color" value="#000000" />
         <inkml:brushProperty name="transparency" value="0" />
         <inkml:brushProperty name="tip" value="ellipse" />
@@ -143,27 +157,37 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
     xml_path = out_dir / "calib.xml"
     xml_path.write_text("\n".join(xml_parts), encoding="utf-8")
 
+    # "+" top-left = CSS point. Small label offset so it does not cover the center.
     divs = []
     for m in markers:
         lab = m["label"]
         nl, nt = m["css_new"]
         ol, ot = m["css_old_div10"]
         divs.append(
-            f'<div style="position:absolute;left:{nl:.0f}px;top:{nt:.0f}px;width:80px">'
-            f'<p style="margin:0;font-size:28pt;font-weight:bold;color:#00aa00">N{lab}</p></div>'
+            f'<div style="position:absolute;left:{nl:.0f}px;top:{nt:.0f}px;width:40px">'
+            f'<p style="margin:0;line-height:1;font-size:22pt;font-weight:bold;'
+            f'color:#00aa00">+</p></div>'
         )
         divs.append(
-            f'<div style="position:absolute;left:{ol:.0f}px;top:{ot:.0f}px;width:80px">'
-            f'<p style="margin:0;font-size:28pt;font-weight:bold;color:#cc0000">O{lab}</p></div>'
+            f'<div style="position:absolute;left:{nl + 22:.0f}px;top:{nt:.0f}px;width:30px">'
+            f'<p style="margin:0;font-size:11pt;color:#00aa00">{lab}</p></div>'
+        )
+        divs.append(
+            f'<div style="position:absolute;left:{ol:.0f}px;top:{ot:.0f}px;width:40px">'
+            f'<p style="margin:0;line-height:1;font-size:22pt;font-weight:bold;'
+            f'color:#cc0000">x</p></div>'
         )
     divs.append(
-        '<div style="position:absolute;left:48px;top:40px;width:560px">'
+        '<div style="position:absolute;left:48px;top:40px;width:580px">'
         '<p style="margin:0;font-family:Calibri;font-size:11pt">'
         f"<b>{title}</b><br/>"
-        "Judge in OneNote (not PDF). Fractional CSS left/top was zeroed by Graph — now integers.<br/>"
-        "Ink crosses = RM truth.<br/>"
-        "<span style='color:#00aa00'>N*</span> = new CSS (inkml*96/2540) — should sit on cross.<br/>"
-        "<span style='color:#cc0000'>O*</span> = old CSS (inkml/10) — should miss."
+        "Ink: thin cross, quarter ticks, filled center square = exact point.<br/>"
+        "<span style='color:#00aa00'>Green +</span> = new CSS (top-left of + box = CSS point). "
+        "Label A–D is only a name tag.<br/>"
+        "<span style='color:#cc0000'>Red x</span> = old CSS (inkml/10), should miss.<br/>"
+        "<b>Report:</b> for A–D, where is the <i>intersection of the green +</i> "
+        "vs the <i>ink center square</i>? "
+        "Example: <code>A: + center ~1/4 arm right, ~1/8 arm down</code>"
         "</p></div>"
     )
     html = f"""<html>
@@ -185,9 +209,11 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
         "true_himetric_per_css_px": TRUE_HIMETRIC_PER_CSS,
         "screen_dpi": SCREEN_DPI,
         "cross_arm_himetric": CROSS_ARM_HIMETRIC,
+        "center_half_himetric": CENTER_HALF_HIMETRIC,
         "markers": markers,
         "how_to_read": (
-            "N* (green) should sit on each ink cross. O* (red) is legacy ÷10 and should miss."
+            "Report green + intersection vs ink center square in arm fractions "
+            "(quarter ticks on each arm)."
         ),
         "files": {"xml": str(xml_path), "html": str(html_path)},
     }
