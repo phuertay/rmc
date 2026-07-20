@@ -41,6 +41,25 @@ or Docker services.
 - Poetry is installed via pipx (`~/.local/bin/poetry`, symlinked into `/usr/local/bin`).
   The virtualenv lives under `~/.cache/pypoetry/virtualenvs/`.
 
+### OneNote ink/text scale calibration
+Local RM/SVG checks cannot prove OneNote’s himetric vs CSS px mapping. Use the
+self-describing calib page (ink crosses + letters **O**=our `/10` CSS, **H**=true
+himetric CSS):
+
+```bash
+poetry run python tests/onenote_calib/generate_calib_page.py
+poetry run python tests/onenote_calib/check_generate.py
+# needs Graph token + section id (never commit tokens):
+export ONENOTE_TOKEN=… ONENOTE_SECTION=…
+poetry run python tests/onenote_calib/upload_and_fit.py --upload
+# open the page → see whether O or H sits on each cross, then:
+poetry run python tests/onenote_calib/upload_and_fit.py --apply ours   # or true_himetric
+```
+
+That writes `tests/onenote_calib/out/fit_result.json` with the mapping to put in
+`inmkl.py`. Readback alone cannot reveal visual pixels (OneNote stores ink as
+himetric and HTML as CSS); the O-vs-H page is the experiment.
+
 ### Token-efficiency stack (ponytail + caveman ultra + token-savior)
 
 Always-on Cursor rules live in `.cursor/rules/` (`caveman-ultra.mdc`, `ponytail.mdc`,
