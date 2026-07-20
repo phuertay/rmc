@@ -10,11 +10,11 @@ Coordinate system (one pipeline for ink and typed text)
 2. InkML:  rm_to_inkml() = (rm - origin) * RM_PER_INK + pad
    Channel units are real himetric (1 inch = 2540). RM_PER_INK = 2540/SCREEN_DPI
    so 1 RM screen-pixel = 1/SCREEN_DPI inch.
-3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540)
-   Same RM point → matching ink and absolute HTML (OneNote calib 2026-07-20).
+3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540) + CSS_ALIGN_*
+   Same RM point → matching absolute HTML (OneNote calib 2026-07-20).
    OneNote zeros fractional left/top to 0,0 — CSS positions must be integers.
-   CSS_ALIGN_* is baked into rm_to_inkml (himetric) so ink and HTML shift together.
-   Strokes get an extra INK_EXTRA_DX (left) so the box clears typed text.
+   CSS_ALIGN_* stays on HTML only for Y (no ink height nudge).
+   Strokes get CSS_ALIGN_DX + INK_EXTRA_DX on X so the box clears typed text.
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 
@@ -62,15 +62,14 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Residual OneNote origin (rmc-calib-20260720-203433): green + was ~3/4
 # quarter-tick right and 2 quarter-ticks down from ink center. Nudge opposite.
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
-# Shared via rm_to_inkml so ink + HTML keep RM spacing (HTML-only ate Y gap).
-# Extra ink-only X: left box stroke was still through "A" on al_medio.
-# ponytail: empirical; tweak INK_EXTRA_DX_CSS if left edge still clips type.
+# Y: HTML-only (CSS_ALIGN_DY) — do not shift ink height.
+# X: strokes get CSS_ALIGN_DX + small extra left so box clears "A".
+# ponytail: empirical; tweak INK_EXTRA_DX_CSS if left edge still off.
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
-INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric
-INK_ALIGN_DY = round(CSS_ALIGN_DY / CSS_PER_HIMETRIC)
-INK_EXTRA_DX_CSS = -10  # strokes only; clears left vertical vs typed text
+INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
+INK_EXTRA_DX_CSS = -5  # strokes only; −10 was too far left
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
@@ -94,10 +93,10 @@ def set_page_origin(bbox: Tuple[float, float, float, float]) -> None:
 
 
 def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
-    """RM page point → InkML channel integers (same transform for ink + HTML)."""
+    """RM page point → InkML channel integers (pad only; stroke X nudge in draw_stroke)."""
     return (
-        int((x - min_x) * RM_PER_INK + X_PAD) + INK_ALIGN_DX,
-        int((y - min_y) * RM_PER_INK + Y_PAD) + INK_ALIGN_DY,
+        int((x - min_x) * RM_PER_INK + X_PAD),
+        int((y - min_y) * RM_PER_INK + Y_PAD),
     )
 
 
@@ -115,9 +114,9 @@ def rm_delta_to_css(delta_rm: float) -> float:
 
 
 def rm_to_css(x: float, y: float) -> Tuple[float, float]:
-    """RM page point → HTML absolute CSS px (same InkML path as strokes)."""
+    """RM page point → HTML absolute CSS px (InkML path + HTML-only CSS_ALIGN)."""
     ix, iy = rm_to_inkml(x, y)
-    return inkml_to_css(ix), inkml_to_css(iy)
+    return inkml_to_css(ix) + CSS_ALIGN_DX, inkml_to_css(iy) + CSS_ALIGN_DY
 
 
 # Legacy names used by brushes / older call sites
@@ -297,7 +296,7 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
     move_x, move_y = move_pos
     for pt in item.points:
         scaled_x, scaled_y = rm_to_inkml(pt.x + move_x, pt.y + move_y)
-        scaled_x += INK_EXTRA_DX
+        scaled_x += INK_ALIGN_DX + INK_EXTRA_DX  # X only; Y stays unshifted
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
         coord.append(f"{scaled_x} {scaled_y} {scaled_pressure}")
     coord_str = ",".join(coord)
