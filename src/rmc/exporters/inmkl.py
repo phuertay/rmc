@@ -64,13 +64,13 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
 # Y: HTML-only CSS_ALIGN_DY; tiny ink-only DY from live al_medio tweak.
 # X: strokes get CSS_ALIGN_DX + small extra so box clears "A".
-# ponytail: empirical; last nudge from r2u1 (+1 down → DY 0).
+# ponytail: empirical; last nudge from r2d0 (+1 right, +1 down).
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = -3  # strokes only (−5 was 2px too far left)
-INK_EXTRA_DY_CSS = 0  # strokes only (was −1; +1 down)
+INK_EXTRA_DX_CSS = -2  # strokes only
+INK_EXTRA_DY_CSS = 1  # strokes only
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
