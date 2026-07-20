@@ -17,6 +17,8 @@ from rmscene import read_tree
 from rmscene.scene_stream import simple_text_document, write_blocks
 from rmscene.text import TextDocument
 from rmc.exporters.inmkl import (
+    CSS_ALIGN_DX,
+    CSS_ALIGN_DY,
     CSS_PER_HIMETRIC,
     RM_PER_INK,
     inkml_to_css,
@@ -77,7 +79,8 @@ def check_pipeline_identity() -> None:
     for x, y in [(-468.0, 146.0), (-468.0, 216.0), (0.0, 500.0), (100.5, 999.25)]:
         ix, iy = rm_to_inkml(x, y)
         cx, cy = rm_to_css(x, y)
-        assert abs(cx - inkml_to_css(ix)) < 1e-6 and abs(cy - inkml_to_css(iy)) < 1e-6, (
+        assert abs(cx - (inkml_to_css(ix) + CSS_ALIGN_DX)) < 1e-6
+        assert abs(cy - (inkml_to_css(iy) + CSS_ALIGN_DY)) < 1e-6, (
             x, y, ix, iy, cx, cy
         )
         # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px (then round)

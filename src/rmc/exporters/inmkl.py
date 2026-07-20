@@ -10,9 +10,10 @@ Coordinate system (one pipeline for ink and typed text)
 2. InkML:  rm_to_inkml() = (rm - origin) * RM_PER_INK + pad
    Channel units are real himetric (1 inch = 2540). RM_PER_INK = 2540/SCREEN_DPI
    so 1 RM screen-pixel = 1/SCREEN_DPI inch.
-3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540)
+3. HTML CSS px: inkml_to_css() = round(inkml * 96/2540) + CSS_ALIGN_*
    Same RM point → matching ink and absolute HTML (OneNote calib 2026-07-20).
    OneNote zeros fractional left/top to 0,0 — CSS positions must be integers.
+   CSS_ALIGN_* corrects measured residual (green + vs ink center).
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 
@@ -57,6 +58,14 @@ CSS_Y_PAD = 120
 X_PAD = CSS_X_PAD / CSS_PER_HIMETRIC
 Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 
+# Residual HTML vs ink (rmc-calib-20260720-203433): green + intersection was
+# ~3/4 quarter-tick right and 2 quarter-ticks down from ink center square.
+# Quarter-tick = 250 himetric (arm 1000). Nudge HTML opposite so they meet.
+# ponytail: empirical OneNote origin; re-measure if title chrome changes.
+_CSS_TICK = 250 * CSS_PER_HIMETRIC
+CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
+CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
+
 XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
               "<inkml:ink xmlns:emma=\"http://www.w3.org/2003/04/emma\" "
                  "xmlns:msink=\"http://schemas.microsoft.com/ink/2010/main\""
@@ -99,9 +108,9 @@ def rm_delta_to_css(delta_rm: float) -> float:
 
 
 def rm_to_css(x: float, y: float) -> Tuple[float, float]:
-    """RM page point → HTML absolute CSS px. Same RM point as rm_to_inkml."""
+    """RM page point → HTML absolute CSS px (inkml path + measured OneNote nudge)."""
     ix, iy = rm_to_inkml(x, y)
-    return inkml_to_css(ix), inkml_to_css(iy)
+    return inkml_to_css(ix) + CSS_ALIGN_DX, inkml_to_css(iy) + CSS_ALIGN_DY
 
 
 # Legacy names used by brushes / older call sites

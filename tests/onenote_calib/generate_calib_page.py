@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from rmc.exporters.inmkl import (
+    CSS_ALIGN_DX,
+    CSS_ALIGN_DY,
     CSS_PER_HIMETRIC,
     RM_PER_INK,
     X_PAD,
@@ -182,12 +184,11 @@ def generate(out_dir: Path = OUT, title: str | None = None) -> dict:
         '<p style="margin:0;font-family:Calibri;font-size:11pt">'
         f"<b>{title}</b><br/>"
         "Ink: thin cross, quarter ticks, filled center square = exact point.<br/>"
-        "<span style='color:#00aa00'>Green +</span> = new CSS (top-left of + box = CSS point). "
+        "<span style='color:#00aa00'>Green +</span> = new CSS + measured nudge "
+        f"({CSS_ALIGN_DX:+d},{CSS_ALIGN_DY:+d})px. "
         "Label A–D is only a name tag.<br/>"
         "<span style='color:#cc0000'>Red x</span> = old CSS (inkml/10), should miss.<br/>"
-        "<b>Report:</b> for A–D, where is the <i>intersection of the green +</i> "
-        "vs the <i>ink center square</i>? "
-        "Example: <code>A: + center ~1/4 arm right, ~1/8 arm down</code>"
+        "<b>Expect:</b> green + intersection on the ink center square."
         "</p></div>"
     )
     html = f"""<html>
