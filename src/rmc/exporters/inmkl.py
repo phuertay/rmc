@@ -130,11 +130,12 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# Device typed text: Noto Sans body (fonts pulled from tablet / remarkable-rm);
-# heading often Noto Serif. Sizes between svg 14/7pt (too small in OneNote) and
-# 0.55×line-box (~26/12pt, heading too big). ponytail: OneNote may fall back.
-FONT_FAMILY_SANS = "'Noto Sans',Arial,sans-serif"
-FONT_FAMILY_SERIF = "'Noto Serif',Georgia,serif"
+# Device faces (from tablet screenshot + remarkable-rm / fontconfig):
+#   title/subheading → EB Garamond; body → Noto Sans.
+# OneNote cannot embed fonts; stack closest Windows/Office stand-ins after.
+# ponytail: install EB Garamond + Noto Sans for a true match.
+FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
+FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
     si.ParagraphStyle.HEADING: 20.0,
     si.ParagraphStyle.BOLD: 11.0,
