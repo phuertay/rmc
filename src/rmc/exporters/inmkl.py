@@ -66,13 +66,14 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
 # Y: HTML-only CSS_ALIGN_DY; tiny ink-only DY from live al_medio tweak.
 # X: strokes get CSS_ALIGN_DX + small extra so box clears "A".
-# ponytail: empirical; last nudge from r1d1b (+1 right, +1 down).
+# ponytail: empirical; last nudge after real EB Garamond/Noto Sans install
+# (fallback metrics left boxes low — upper stroke through glyphs).
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = 0  # strokes only
-INK_EXTRA_DY_CSS = 3  # strokes only
+INK_EXTRA_DY_CSS = -3  # was +3 with fallbacks; real fonts need ink higher
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -135,9 +136,9 @@ def html_text_origin_css(
     left, top = rm_to_css(rm_x, rm_y)
     if style == si.ParagraphStyle.HEADING:
         top -= ONENOTE_P_MARGIN_PX
-        # Mid raise; +5 (last +2 was a hair too much — half step back).
-        # ponytail: retune after EB Garamond install.
-        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 5
+        # Mid raise; +2 after real fonts (was +5 with Georgia/Segoe fallbacks).
+        # ponytail: EB Garamond metrics differ — retune if still off.
+        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 2
     return left, float(round(top))
 
 
