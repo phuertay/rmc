@@ -164,18 +164,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # b87e desktop calib (OneNote 0.5pt grid): title / mid / mid2 / body
-    # ratios vs HEADING: 1 : 17/24 : 13.5/24 : 10/24 ≈ 1 : 0.708 : 0.562 : 0.417
-    si.ParagraphStyle.HEADING: 24.0,
-    si.ParagraphStyle.BOLD: 17.0,
-    si.ParagraphStyle.PLAIN: 10.0,
-    si.ParagraphStyle.BULLET: 10.0,
-    si.ParagraphStyle.BULLET2: 10.0,
-    si.ParagraphStyle.CHECKBOX: 10.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 10.0,
+    # b87e device PDF glyph bbox (~19.5/11.1/8.6/7.7) → nicer 0.5pt ladder.
+    # ~1.25× steps; do NOT match hand-drawn box height (boxes are padded).
+    si.ParagraphStyle.HEADING: 20.0,
+    si.ParagraphStyle.BOLD: 11.0,
+    si.ParagraphStyle.PLAIN: 8.0,
+    si.ParagraphStyle.BULLET: 8.0,
+    si.ParagraphStyle.BULLET2: 8.0,
+    si.ParagraphStyle.CHECKBOX: 8.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 8.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 13.5
+FONT_SIZE_SECOND_BOLD = 9.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
@@ -188,7 +188,7 @@ TEXT_LINE_HEIGHT_EM = 1.2
 def rm_font_size_pt(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
     if style == si.ParagraphStyle.BOLD and bold_ordinal > 1:
         return FONT_SIZE_SECOND_BOLD
-    return FONT_SIZE_PT.get(style, 10.0)
+    return FONT_SIZE_PT.get(style, 8.0)
 
 
 def _fmt_pt(pt: float) -> str:

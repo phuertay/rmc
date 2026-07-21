@@ -101,7 +101,7 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "24pt" in html and "17pt" in html and "13.5pt" in html and "10pt" in html, html
+    assert "20pt" in html and "11pt" in html and "9pt" in html and "8pt" in html, html
     assert "position:absolute" in html
     # Faces from device PDF: L1/L2 EB Garamond; L3/L4 Noto Sans
     assert html.count("EB Garamond") >= 2
