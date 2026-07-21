@@ -135,9 +135,9 @@ def html_text_origin_css(
     left, top = rm_to_css(rm_x, rm_y)
     if style == si.ParagraphStyle.HEADING:
         top -= ONENOTE_P_MARGIN_PX
-        # Mid raise; +4 after user said box still slightly low (two +2 nudges).
+        # Mid raise; +6 after three +2 nudges (box still slightly low).
         # ponytail: retune after EB Garamond install.
-        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 4
+        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 6
     return left, float(round(top))
 
 
