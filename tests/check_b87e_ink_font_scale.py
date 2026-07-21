@@ -29,8 +29,8 @@ PDF_CANDIDATES = [
     ROOT / "expected" / "b87e_device_render.pdf",
 ]
 PT_PER_RM = 72 / 226
-# Target: scaled box ≈ font (slight pad OK). Device title pad was ~1.28 pre-scale.
-OK_LO, OK_HI = 1.00, 1.20
+# Target: scaled box ≈ font. Slight under/over OK (OneNote font metrics).
+OK_LO, OK_HI = 0.90, 1.20
 
 
 def _path_points(s: str):

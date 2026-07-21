@@ -85,11 +85,16 @@ _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = -2  # strokes only; desktop boxes a hair right of type
+INK_EXTRA_DX_CSS = -2  # strokes only; b87e-calibDX-1of5 winner
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
 PAGE_NUDGE_DY_CSS = -9
-# Ink-only: was −6 (boxes high on b87e first 3 lines) → less lift.
+# Fallback ink-only DY (pages without typed lines). Per-style overrides below.
 INK_EXTRA_DY_CSS = -2 + PAGE_NUDGE_DY_CSS  # -11
+# b87e-calibDY winners: L1→2of5, L2→3, L3→4, L4→5 (smaller type needs more lift).
+INK_EXTRA_DY_HEADING_CSS = -9
+INK_EXTRA_DY_BOLD_CSS = -11
+INK_EXTRA_DY_SECOND_BOLD_CSS = -13
+INK_EXTRA_DY_PLAIN_CSS = -15
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -103,8 +108,8 @@ XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 min_x = min_y = max_x = max_y = 0
 # Fallback center when no per-group scale (page content mid).
 _ink_cx = _ink_cy = 0.0
-# (y_rm, scale) for nearest-text lookup; set in prepare_ink_scales.
-_ink_scale_ys: List[Tuple[float, float]] = []
+# (y_rm, scale, dy_css) for nearest-text lookup; set in prepare_ink_scales.
+_ink_scale_ys: List[Tuple[float, float, float]] = []
 trace_id = 1
 _logger = logging.getLogger(__name__)
 
@@ -128,8 +133,17 @@ def rm_ink_scale_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -
     return INK_SCALE_PLAIN
 
 
+def rm_ink_extra_dy_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
+    """Per-line ink Y nudge (CSS px). Smaller type needs more lift on b87e."""
+    if style == si.ParagraphStyle.HEADING:
+        return INK_EXTRA_DY_HEADING_CSS
+    if style == si.ParagraphStyle.BOLD:
+        return INK_EXTRA_DY_SECOND_BOLD_CSS if bold_ordinal > 1 else INK_EXTRA_DY_BOLD_CSS
+    return INK_EXTRA_DY_PLAIN_CSS
+
+
 def prepare_ink_scales(tree: SceneTree) -> None:
-    """Map each typed paragraph Y → ink scale (draw_tree picks nearest)."""
+    """Map each typed paragraph Y → (ink scale, ink DY CSS)."""
     global _ink_scale_ys
     _ink_scale_ys = []
     text = tree.root_text
@@ -145,14 +159,26 @@ def prepare_ink_scales(tree: SceneTree) -> None:
             if st == si.ParagraphStyle.BOLD:
                 bold_n += 1
                 bold_ord = bold_n
-            _ink_scale_ys.append((ypos, rm_ink_scale_for_style(st, bold_ordinal=bold_ord)))
+            _ink_scale_ys.append(
+                (
+                    ypos,
+                    rm_ink_scale_for_style(st, bold_ordinal=bold_ord),
+                    rm_ink_extra_dy_css_for_style(st, bold_ordinal=bold_ord),
+                )
+            )
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
 
 
-def nearest_ink_scale(y_rm: float) -> float:
+def nearest_ink_params(y_rm: float) -> Tuple[float, float]:
+    """Return (scale, dy_css) for the typed line nearest to y_rm."""
     if not _ink_scale_ys:
-        return INK_SCALE
-    return min(_ink_scale_ys, key=lambda t: abs(t[0] - y_rm))[1]
+        return INK_SCALE, INK_EXTRA_DY_CSS
+    _y, scale, dy = min(_ink_scale_ys, key=lambda t: abs(t[0] - y_rm))
+    return scale, dy
+
+
+def nearest_ink_scale(y_rm: float) -> float:
+    return nearest_ink_params(y_rm)[0]
 
 
 def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
@@ -237,18 +263,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # b87e device PDF glyph bbox (~19.5/11.1/8.6/7.7) → nicer 0.5pt ladder.
-    # ~1.25× steps; do NOT match hand-drawn box height (boxes are padded).
+    # Desktop: glyph PDF 19.5/11.1/8.6/7.7 looked small vs scaled boxes in OneNote
+    # except HEADING. Bump L2–L4 toward scaled box height (~12.1/9.5/8.3 pt).
     si.ParagraphStyle.HEADING: 20.0,
-    si.ParagraphStyle.BOLD: 11.0,
-    si.ParagraphStyle.PLAIN: 8.0,
-    si.ParagraphStyle.BULLET: 8.0,
-    si.ParagraphStyle.BULLET2: 8.0,
-    si.ParagraphStyle.CHECKBOX: 8.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 8.0,
+    si.ParagraphStyle.BOLD: 12.0,
+    si.ParagraphStyle.PLAIN: 9.0,
+    si.ParagraphStyle.BULLET: 9.0,
+    si.ParagraphStyle.BULLET2: 9.0,
+    si.ParagraphStyle.CHECKBOX: 9.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 9.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 9.0
+FONT_SIZE_SECOND_BOLD = 10.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
@@ -376,10 +402,11 @@ def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
     lines = [c for c in item.children.values() if isinstance(c, si.Line)]
     scale_ctx = None
     if lines:
-        # Group move_pos Y matches typed-line anchor on b87e → pick that scale.
-        s = nearest_ink_scale(move_pos[1])
+        # Group move_pos Y matches typed-line anchor on b87e → pick that scale/DY.
+        s, dy_css = nearest_ink_params(move_pos[1])
         cx, cy = _group_scale_pivot(lines, move_pos)
-        scale_ctx = (cx, cy, s)
+        dy_hm = round(dy_css / CSS_PER_HIMETRIC)
+        scale_ctx = (cx, cy, s, dy_hm)
     for child_id in item.children:
         child = item.children[child_id]
         _logger.debug("Group child: %s %s", child_id, type(child))
@@ -452,7 +479,7 @@ def draw_stroke(
     output,
     trace_id: int,
     move_pos: Tuple[int, int] = (0, 0),
-    scale_ctx: Tuple[float, float, float] | None = None,
+    scale_ctx: Tuple[float, float, float, int] | None = None,
 ) -> None:
     if _logger.root.level == logging.DEBUG:
         _logger.debug("Drawing stroke %d from node %s with %d points", trace_id, item.node_id, len(item.points))
@@ -460,14 +487,15 @@ def draw_stroke(
     coord = []
     move_x, move_y = move_pos
     cx = cy = scale = None
+    dy = INK_EXTRA_DY
     if scale_ctx is not None:
-        cx, cy, scale = scale_ctx
+        cx, cy, scale, dy = scale_ctx
     for pt in item.points:
         scaled_x, scaled_y = rm_to_inkml_stroke(
             pt.x + move_x, pt.y + move_y, cx=cx, cy=cy, scale=scale
         )
         scaled_x += INK_ALIGN_DX + INK_EXTRA_DX
-        scaled_y += INK_EXTRA_DY
+        scaled_y += dy
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
         coord.append(f"{scaled_x} {scaled_y} {scaled_pressure}")
     coord_str = ",".join(coord)
