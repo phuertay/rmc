@@ -74,8 +74,8 @@ CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = 0  # strokes only
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
-PAGE_NUDGE_DY_CSS = -4
-INK_EXTRA_DY_CSS = -3 + PAGE_NUDGE_DY_CSS  # -7
+PAGE_NUDGE_DY_CSS = -6
+INK_EXTRA_DY_CSS = -3 + PAGE_NUDGE_DY_CSS  # -9
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -163,7 +163,7 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    si.ParagraphStyle.HEADING: 20.0,
+    si.ParagraphStyle.HEADING: 22.0,
     # 11pt Noto Sans ran ~1.5 letters wide vs device ink underlines.
     si.ParagraphStyle.BOLD: 10.0,
     si.ParagraphStyle.PLAIN: 10.0,
