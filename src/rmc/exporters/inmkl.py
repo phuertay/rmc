@@ -130,28 +130,35 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# reMarkable typed text is Noto Serif (EB Garamond for “fancy”). Sizes match
-# svg.draw_text (physical pt in the same 72dpi space as SCALE=72/SCREEN_DPI).
-# ponytail: OneNote may substitute Georgia if Noto missing.
-FONT_FAMILY = "'Noto Serif',Georgia,serif"
+# Device typed text: Noto Sans body (fonts pulled from tablet / remarkable-rm);
+# heading often Noto Serif. Sizes between svg 14/7pt (too small in OneNote) and
+# 0.55×line-box (~26/12pt, heading too big). ponytail: OneNote may fall back.
+FONT_FAMILY_SANS = "'Noto Sans',Arial,sans-serif"
+FONT_FAMILY_SERIF = "'Noto Serif',Georgia,serif"
 FONT_SIZE_PT = {
-    si.ParagraphStyle.HEADING: 14.0,
-    si.ParagraphStyle.BOLD: 8.0,
-    si.ParagraphStyle.PLAIN: 7.0,
-    si.ParagraphStyle.BULLET: 7.0,
-    si.ParagraphStyle.BULLET2: 7.0,
-    si.ParagraphStyle.CHECKBOX: 7.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 7.0,
+    si.ParagraphStyle.HEADING: 20.0,
+    si.ParagraphStyle.BOLD: 11.0,
+    si.ParagraphStyle.PLAIN: 11.0,
+    si.ParagraphStyle.BULLET: 11.0,
+    si.ParagraphStyle.BULLET2: 11.0,
+    si.ParagraphStyle.CHECKBOX: 11.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 11.0,
 }
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
-    return FONT_SIZE_PT.get(style, 7.0)
+    return FONT_SIZE_PT.get(style, 11.0)
 
 
 def rm_font_size_css(style: si.ParagraphStyle) -> float:
-    """CSS font-size (px) matching svg.draw_text pt sizes."""
+    """CSS font-size (px) from style pt table."""
     return float(round(rm_font_size_pt(style) * CSS_DPI / 72))
+
+
+def _font_family(style: si.ParagraphStyle) -> str:
+    if style == si.ParagraphStyle.HEADING:
+        return FONT_FAMILY_SERIF
+    return FONT_FAMILY_SANS
 
 
 def _html_escape(s: str) -> str:
@@ -171,7 +178,7 @@ def _run_span_style(style: si.ParagraphStyle) -> str:
     """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
     lh = rm_line_height_css(style)
     parts = [
-        f"font-family:{FONT_FAMILY}",
+        f"font-family:{_font_family(style)}",
         f"font-size:{rm_font_size_pt(style):.0f}pt",
         f"line-height:{lh:.0f}px",
     ]
@@ -341,7 +348,7 @@ def tree_to_html(tree: SceneTree, output):
     <head>
         <title>{page_title}</title>
     </head>
-    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY};font-size:7pt">""")
+    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:11pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
