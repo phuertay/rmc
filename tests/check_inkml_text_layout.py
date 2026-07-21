@@ -20,6 +20,7 @@ from rmc.exporters.inmkl import (
     CSS_ALIGN_DX,
     CSS_ALIGN_DY,
     CSS_PER_HIMETRIC,
+    PAGE_NUDGE_DY_CSS,
     RM_PER_INK,
     html_text_origin_css,
     inkml_to_css,
@@ -81,7 +82,7 @@ def check_pipeline_identity() -> None:
         ix, iy = rm_to_inkml(x, y)
         cx, cy = rm_to_css(x, y)
         assert abs(cx - (inkml_to_css(ix) + CSS_ALIGN_DX)) < 1e-6
-        assert abs(cy - (inkml_to_css(iy) + CSS_ALIGN_DY)) < 1e-6, (
+        assert abs(cy - (inkml_to_css(iy) + CSS_ALIGN_DY + PAGE_NUDGE_DY_CSS)) < 1e-6, (
             x, y, ix, iy, cx, cy
         )
         # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px (then round)

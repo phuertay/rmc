@@ -73,7 +73,9 @@ CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = 0  # strokes only
-INK_EXTRA_DY_CSS = -3  # was +3 with fallbacks; real fonts need ink higher
+# Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
+PAGE_NUDGE_DY_CSS = -2
+INK_EXTRA_DY_CSS = -3 + PAGE_NUDGE_DY_CSS  # -5
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -121,7 +123,10 @@ def rm_delta_to_css(delta_rm: float) -> float:
 def rm_to_css(x: float, y: float) -> Tuple[float, float]:
     """RM page point → HTML absolute CSS px (InkML path + HTML-only CSS_ALIGN)."""
     ix, iy = rm_to_inkml(x, y)
-    return inkml_to_css(ix) + CSS_ALIGN_DX, inkml_to_css(iy) + CSS_ALIGN_DY
+    return (
+        inkml_to_css(ix) + CSS_ALIGN_DX,
+        inkml_to_css(iy) + CSS_ALIGN_DY + PAGE_NUDGE_DY_CSS,
+    )
 
 
 def html_text_origin_css(

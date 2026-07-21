@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from generate_calib_page import generate
-from rmc.exporters.inmkl import CSS_ALIGN_DX, CSS_ALIGN_DY, CSS_PER_HIMETRIC, inkml_to_css
+from rmc.exporters.inmkl import CSS_ALIGN_DX, CSS_ALIGN_DY, CSS_PER_HIMETRIC, PAGE_NUDGE_DY_CSS, inkml_to_css
 
 OUT = Path(__file__).resolve().parent / "out"
 
@@ -19,7 +19,7 @@ def main() -> None:
         nl, nt = m["css_new"]
         ol, ot = m["css_old_div10"]
         assert abs(nl - (inkml_to_css(ix) + CSS_ALIGN_DX)) < 0.01
-        assert abs(nt - (inkml_to_css(iy) + CSS_ALIGN_DY)) < 0.01
+        assert abs(nt - (inkml_to_css(iy) + CSS_ALIGN_DY + PAGE_NUDGE_DY_CSS)) < 0.01
         assert abs(ol - round(ix / 10)) < 0.01 and abs(ot - round(iy / 10)) < 0.01
         assert float(nl).is_integer() and float(nt).is_integer()
         assert nl < ol and nt < ot
