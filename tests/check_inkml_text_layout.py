@@ -21,6 +21,7 @@ from rmc.exporters.inmkl import (
     CSS_ALIGN_DY,
     CSS_PER_HIMETRIC,
     RM_PER_INK,
+    html_text_origin_css,
     inkml_to_css,
     rm_delta_to_css,
     rm_to_css,
@@ -111,7 +112,7 @@ def check_text_y_matches_ink_anchors(path: Path) -> None:
     for p in doc.contents:
         if str(p).strip():
             if not in_run:
-                _l, top = rm_to_css(text.pos_x, ypos)
+                _l, top = html_text_origin_css(text.pos_x, ypos, p.style.value)
                 run_tops.append(round(top, 2))
                 in_run = True
         else:
@@ -150,7 +151,7 @@ def check_ink_text_same_origin(path: Path) -> None:
     ypos = text.pos_y + TEXT_TOP_Y
     for p in doc.contents:
         if str(p).strip():
-            _l, expect = rm_to_css(text.pos_x, ypos)
+            _l, expect = html_text_origin_css(text.pos_x, ypos, p.style.value)
             assert abs(tops[0] - expect) < 0.6, (tops[0], expect)
             break
         ypos += LINE_HEIGHTS.get(p.style.value, 70)

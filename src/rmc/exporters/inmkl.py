@@ -17,6 +17,8 @@ Coordinate system (one pipeline for ink and typed text)
    clears typed text (live-tuned on al_medio).
 4. Text line Y uses the same values as build_anchor_pos() (ink group anchors),
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
+5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
+   so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -121,6 +123,24 @@ def rm_to_css(x: float, y: float) -> Tuple[float, float]:
     return inkml_to_css(ix) + CSS_ALIGN_DX, inkml_to_css(iy) + CSS_ALIGN_DY
 
 
+def html_text_origin_css(
+    rm_x: float, rm_y: float, style: si.ParagraphStyle
+) -> Tuple[float, float]:
+    """CSS left/top for a text run.
+
+    RM/SVG Y is a baseline; HTML top is the line-box top. Large titles hang far
+    below that top and collide with nearby ink (bd4c554f \"New test\"). Plain
+    @11pt already sits well on al_medio — only shift big heading styles.
+    Also undo Graph's forced <p margin-top:5.5pt> for those runs.
+    """
+    left, top = rm_to_css(rm_x, rm_y)
+    if style == si.ParagraphStyle.HEADING:
+        top -= ONENOTE_P_MARGIN_PX
+        # ponytail: ~0.8 Cap-height/em for EB Garamond / Georgia fallback
+        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO)
+    return left, float(round(top))
+
+
 # Legacy names used by brushes / older call sites
 scale = rm_to_inkml
 scale_to_css_px = inkml_to_css
@@ -145,6 +165,9 @@ FONT_SIZE_PT = {
     si.ParagraphStyle.CHECKBOX: 11.0,
     si.ParagraphStyle.CHECKBOX_CHECKED: 11.0,
 }
+# Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
+ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
+TEXT_ASCENT_RATIO = 0.8
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
@@ -355,7 +378,7 @@ def tree_to_html(tree: SceneTree, output):
         width_px = rm_delta_to_css(float(text.width))
         for run in _text_runs(doc, text.pos_y):
             p0, abs_y = run[0]
-            left, top = rm_to_css(text.pos_x, abs_y)
+            left, top = html_text_origin_css(text.pos_x, abs_y, p0.style.value)
             inner = _emit_run_inner([p for p, _y in run])
             output.write(
                 f"""
