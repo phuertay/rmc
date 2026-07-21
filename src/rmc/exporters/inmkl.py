@@ -75,7 +75,8 @@ INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = 0  # strokes only
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
 PAGE_NUDGE_DY_CSS = -9
-INK_EXTRA_DY_CSS = -3 + PAGE_NUDGE_DY_CSS  # -12
+# Extra ink-only lift on top of PAGE_NUDGE (boxes still sit low vs type).
+INK_EXTRA_DY_CSS = -6 + PAGE_NUDGE_DY_CSS  # -15
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -163,14 +164,14 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    si.ParagraphStyle.HEADING: 24.0,
-    # 10pt read small vs ink; 11pt closer on desktop Noto Sans.
-    si.ParagraphStyle.BOLD: 11.0,
-    si.ParagraphStyle.PLAIN: 11.0,
-    si.ParagraphStyle.BULLET: 11.0,
-    si.ParagraphStyle.BULLET2: 11.0,
-    si.ParagraphStyle.CHECKBOX: 11.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 11.0,
+    si.ParagraphStyle.HEADING: 23.0,
+    # 10 small, 11 large vs ink → halfway.
+    si.ParagraphStyle.BOLD: 10.5,
+    si.ParagraphStyle.PLAIN: 10.5,
+    si.ParagraphStyle.BULLET: 10.5,
+    si.ParagraphStyle.BULLET2: 10.5,
+    si.ParagraphStyle.CHECKBOX: 10.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 10.5,
 }
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
@@ -182,7 +183,12 @@ TEXT_LINE_HEIGHT_EM = 1.2
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
-    return FONT_SIZE_PT.get(style, 11.0)
+    return FONT_SIZE_PT.get(style, 10.5)
+
+
+def _fmt_pt(pt: float) -> str:
+    """CSS font-size with optional half-point (OneNote accepts 10.5pt)."""
+    return f"{pt:g}pt"
 
 
 def rm_font_size_css(style: si.ParagraphStyle) -> float:
@@ -213,7 +219,7 @@ def _run_span_style(style: si.ParagraphStyle) -> str:
     """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
     parts = [
         f"font-family:{_font_family(style)}",
-        f"font-size:{rm_font_size_pt(style):.0f}pt",
+        f"font-size:{_fmt_pt(rm_font_size_pt(style))}",
         f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
     if style == si.ParagraphStyle.BOLD:
@@ -382,7 +388,7 @@ def tree_to_html(tree: SceneTree, output):
     <head>
         <title>{page_title}</title>
     </head>
-    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:11pt">""")
+    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:10.5pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
