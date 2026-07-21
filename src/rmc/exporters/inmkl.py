@@ -60,8 +60,8 @@ CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # ink-group center (group anchors share text Y on b87e).
 # ponytail: ratios from b87e device PDF glyph/box; HEADING live-tuned 0.85.
 INK_SCALE = 0.820  # b87e-L1shrink-1of5 / L12scale-2of5
-# L2 kept at prior 0.708 until separate pick; not re-derived from INK_SCALE.
-INK_SCALE_BOLD = 0.708
+# L2 locked separately (not re-derived from INK_SCALE).
+INK_SCALE_BOLD = 0.690  # b87e-L2scale-2of7
 INK_SCALE_SECOND_BOLD = round(0.85 * (0.59 / 0.78), 3)  # ~0.643 (height; SX=1)
 INK_SCALE_PLAIN = round(0.85 * (0.58 / 0.78), 3)  # ~0.632
 # L3/L4: uniform XY pulled right stroke into glyphs; keep width (SX=1).
