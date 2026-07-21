@@ -19,6 +19,9 @@ Coordinate system (one pipeline for ink and typed text)
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
    so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
+6. Ink strokes scale about each group's bbox center with a per-style factor
+   (HEADING/BOLD/second-BOLD/PLAIN). HTML type stays unscaled. Uniform page
+   scale cannot match all font sizes (device box padding grows as type shrinks).
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -52,9 +55,15 @@ CSS_DPI = 96
 RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # Ink-only size vs HTML type. 1.0 = true himetric (matches device PDF padding).
-# <1 shrinks boxes toward page center so they hug glyph-sized fonts (20/11/9/8).
-# ponytail: live-tune via b87e-inkScale ladder; brush width tracks this.
+# Uniform page scale cannot fit all lines (box/glyph rises ~1.28→1.72 as type
+# shrinks). INK_SCALE is HEADING; other styles use INK_SCALE_* about each
+# ink-group center (group anchors share text Y on b87e).
+# ponytail: ratios from b87e device PDF glyph/box; HEADING live-tuned 0.85.
 INK_SCALE = 0.85
+# ideal_S ≈ glyph_pt/box_pt: 0.78 / 0.65 / 0.59 / 0.58 → relative to HEADING
+INK_SCALE_BOLD = round(INK_SCALE * (0.65 / 0.78), 3)  # ~0.708
+INK_SCALE_SECOND_BOLD = round(INK_SCALE * (0.59 / 0.78), 3)  # ~0.643
+INK_SCALE_PLAIN = round(INK_SCALE * (0.58 / 0.78), 3)  # ~0.632
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -92,8 +101,10 @@ XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 # ----GLOBAL VARIABLES----
 
 min_x = min_y = max_x = max_y = 0
-# Center for INK_SCALE (content bbox mid); set in set_page_origin.
+# Fallback center when no per-group scale (page content mid).
 _ink_cx = _ink_cy = 0.0
+# (y_rm, scale) for nearest-text lookup; set in prepare_ink_scales.
+_ink_scale_ys: List[Tuple[float, float]] = []
 trace_id = 1
 _logger = logging.getLogger(__name__)
 
@@ -108,6 +119,42 @@ def set_page_origin(bbox: Tuple[float, float, float, float]) -> None:
     _ink_cy = 0.5 * (min_y + max_y)
 
 
+def rm_ink_scale_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
+    """Per-line ink shrink so hand-drawn boxes hug glyph-sized HTML fonts."""
+    if style == si.ParagraphStyle.HEADING:
+        return INK_SCALE
+    if style == si.ParagraphStyle.BOLD:
+        return INK_SCALE_SECOND_BOLD if bold_ordinal > 1 else INK_SCALE_BOLD
+    return INK_SCALE_PLAIN
+
+
+def prepare_ink_scales(tree: SceneTree) -> None:
+    """Map each typed paragraph Y → ink scale (draw_tree picks nearest)."""
+    global _ink_scale_ys
+    _ink_scale_ys = []
+    text = tree.root_text
+    if text is None:
+        return
+    doc = TextDocument.from_scene_item(text)
+    ypos = text.pos_y + TEXT_TOP_Y
+    bold_n = 0
+    for p in doc.contents:
+        if str(p).strip():
+            st = p.style.value
+            bold_ord = 1
+            if st == si.ParagraphStyle.BOLD:
+                bold_n += 1
+                bold_ord = bold_n
+            _ink_scale_ys.append((ypos, rm_ink_scale_for_style(st, bold_ordinal=bold_ord)))
+        ypos += LINE_HEIGHTS.get(p.style.value, 70)
+
+
+def nearest_ink_scale(y_rm: float) -> float:
+    if not _ink_scale_ys:
+        return INK_SCALE
+    return min(_ink_scale_ys, key=lambda t: abs(t[0] - y_rm))[1]
+
+
 def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
     """RM page point → InkML channel integers (pad only; stroke X nudge in draw_stroke)."""
     return (
@@ -116,11 +163,21 @@ def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
     )
 
 
-def rm_to_inkml_stroke(x: float, y: float) -> Tuple[int, int]:
-    """RM point → InkML, scaled about page center (HTML text stays unscaled)."""
-    if INK_SCALE != 1.0:
-        x = (x - _ink_cx) * INK_SCALE + _ink_cx
-        y = (y - _ink_cy) * INK_SCALE + _ink_cy
+def rm_to_inkml_stroke(
+    x: float,
+    y: float,
+    *,
+    cx: float | None = None,
+    cy: float | None = None,
+    scale: float | None = None,
+) -> Tuple[int, int]:
+    """RM point → InkML; scale about group center (HTML text stays unscaled)."""
+    s = INK_SCALE if scale is None else scale
+    ox = _ink_cx if cx is None else cx
+    oy = _ink_cy if cy is None else cy
+    if s != 1.0:
+        x = (x - ox) * s + ox
+        y = (y - oy) * s + oy
     return rm_to_inkml(x, y)
 
 
@@ -296,6 +353,7 @@ def tree_to_xml(tree: SceneTree, output):
     global trace_id
     anchor_pos = build_anchor_pos(tree.root_text)
     set_page_origin(get_bounding_box(tree.root, anchor_pos))
+    prepare_ink_scales(tree)
     output.write("  <inkml:traceGroup>\n")
     draw_tree(tree.root, output, anchor_pos)
     output.write("  </inkml:traceGroup>\n")
@@ -303,7 +361,25 @@ def tree_to_xml(tree: SceneTree, output):
     output.write("</inkml:ink>\n")
 
 
+def _group_line_center(lines: list, move_pos: Tuple[float, float]) -> Tuple[float, float]:
+    """Absolute RM center of Line strokes in a group (scale pivot)."""
+    mx, my = move_pos
+    xs, ys = [], []
+    for line in lines:
+        for pt in line.points:
+            xs.append(pt.x + mx)
+            ys.append(pt.y + my)
+    return 0.5 * (min(xs) + max(xs)), 0.5 * (min(ys) + max(ys))
+
+
 def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
+    lines = [c for c in item.children.values() if isinstance(c, si.Line)]
+    scale_ctx = None
+    if lines:
+        # Group move_pos Y matches typed-line anchor on b87e → pick that scale.
+        s = nearest_ink_scale(move_pos[1])
+        cx, cy = _group_line_center(lines, move_pos)
+        scale_ctx = (cx, cy, s)
     for child_id in item.children:
         child = item.children[child_id]
         _logger.debug("Group child: %s %s", child_id, type(child))
@@ -313,7 +389,7 @@ def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
             draw_tree(child, output, anchor_pos, (x + move_x, y + move_y))
         if isinstance(child, si.Line):
             global trace_id
-            draw_stroke(child, output, trace_id, move_pos)
+            draw_stroke(child, output, trace_id, move_pos, scale_ctx=scale_ctx)
             trace_id += 1
 
 
@@ -371,14 +447,25 @@ def fetch_used_inks(tree: SceneTree) -> List[Pen]:
     return pens
 
 
-def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] = (0, 0)) -> None:
+def draw_stroke(
+    item: si.Line,
+    output,
+    trace_id: int,
+    move_pos: Tuple[int, int] = (0, 0),
+    scale_ctx: Tuple[float, float, float] | None = None,
+) -> None:
     if _logger.root.level == logging.DEBUG:
         _logger.debug("Drawing stroke %d from node %s with %d points", trace_id, item.node_id, len(item.points))
     tid = str(trace_id)
     coord = []
     move_x, move_y = move_pos
+    cx = cy = scale = None
+    if scale_ctx is not None:
+        cx, cy, scale = scale_ctx
     for pt in item.points:
-        scaled_x, scaled_y = rm_to_inkml_stroke(pt.x + move_x, pt.y + move_y)
+        scaled_x, scaled_y = rm_to_inkml_stroke(
+            pt.x + move_x, pt.y + move_y, cx=cx, cy=cy, scale=scale
+        )
         scaled_x += INK_ALIGN_DX + INK_EXTRA_DX
         scaled_y += INK_EXTRA_DY
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
