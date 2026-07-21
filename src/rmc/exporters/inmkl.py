@@ -84,15 +84,13 @@ INK_EXTRA_DX_HEADING_CSS = 0
 INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); b87e-L2DX-4of7
 INK_EXTRA_DX_SECOND_BOLD_CSS = 0
 INK_EXTRA_DX_PLAIN_CSS = 0
-# Desktop page nudge (fallback pages without typed lines).
-PAGE_NUDGE_DY_CSS = 2
-# Fallback ink-only DY. Per-style overrides below.
-INK_EXTRA_DY_CSS = PAGE_NUDGE_DY_CSS
-# b87e-calibDY2 20260721-214654: between 1of5 and 2of5 (prior mid still high).
-INK_EXTRA_DY_HEADING_CSS = 2
+# No vertical ink nudge (desktop DY ladders reverted).
+PAGE_NUDGE_DY_CSS = 0
+INK_EXTRA_DY_CSS = 0
+INK_EXTRA_DY_HEADING_CSS = 0
 INK_EXTRA_DY_BOLD_CSS = 0
-INK_EXTRA_DY_SECOND_BOLD_CSS = -2
-INK_EXTRA_DY_PLAIN_CSS = -4
+INK_EXTRA_DY_SECOND_BOLD_CSS = 0
+INK_EXTRA_DY_PLAIN_CSS = 0
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
