@@ -279,18 +279,17 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # Uniform INK_SCALE=0.820 → scaled box ≈ 20.6 / 14.1 / 12.1 / 10.8 pt.
-    # Fonts track those (not device glyph PDF); live-tune on OneNote.
+    # Uniform INK_SCALE=0.820. Live-tuned: L2 +0.5pt; L3/L4 ~−10%.
     si.ParagraphStyle.HEADING: 20.0,
-    si.ParagraphStyle.BOLD: 14.0,
-    si.ParagraphStyle.PLAIN: 11.0,
-    si.ParagraphStyle.BULLET: 11.0,
-    si.ParagraphStyle.BULLET2: 11.0,
-    si.ParagraphStyle.CHECKBOX: 11.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 11.0,
+    si.ParagraphStyle.BOLD: 14.5,
+    si.ParagraphStyle.PLAIN: 10.0,
+    si.ParagraphStyle.BULLET: 10.0,
+    si.ParagraphStyle.BULLET2: 10.0,
+    si.ParagraphStyle.CHECKBOX: 10.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 10.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 12.0
+FONT_SIZE_SECOND_BOLD = 10.5
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
