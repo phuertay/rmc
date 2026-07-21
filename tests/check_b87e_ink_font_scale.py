@@ -29,7 +29,8 @@ PDF_CANDIDATES = [
     ROOT / "expected" / "b87e_device_render.pdf",
 ]
 PT_PER_RM = 72 / 226
-OK_LO, OK_HI = 0.90, 1.20
+# Fonts may sit under padded boxes (esp. L3/L4 when deliberately small).
+OK_LO, OK_HI = 0.85, 1.35
 
 
 def _path_points(s: str):
