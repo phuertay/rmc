@@ -83,15 +83,15 @@ INK_EXTRA_DX_HEADING_CSS = 0
 INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); b87e-L2DX-4of7
 INK_EXTRA_DX_SECOND_BOLD_CSS = 0
 INK_EXTRA_DX_PLAIN_CSS = 0
-# Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
-PAGE_NUDGE_DY_CSS = -9
-# Fallback ink-only DY (pages without typed lines). Per-style overrides below.
-INK_EXTRA_DY_CSS = -2 + PAGE_NUDGE_DY_CSS  # -11
-# b87e-calibDY winners: L1→2of5, L2→3, L3→4, L4→5 (smaller type needs more lift).
-INK_EXTRA_DY_HEADING_CSS = -9
-INK_EXTRA_DY_BOLD_CSS = -11
-INK_EXTRA_DY_SECOND_BOLD_CSS = -13
-INK_EXTRA_DY_PLAIN_CSS = -15
+# Desktop page nudge (fallback pages without typed lines).
+PAGE_NUDGE_DY_CSS = 1
+# Fallback ink-only DY. Per-style overrides below.
+INK_EXTRA_DY_CSS = PAGE_NUDGE_DY_CSS
+# b87e-calibDY 20260721-214235: between 3of5 and 4of5 (ink was high @ old −9/−11/−13/−15).
+INK_EXTRA_DY_HEADING_CSS = 1
+INK_EXTRA_DY_BOLD_CSS = -1
+INK_EXTRA_DY_SECOND_BOLD_CSS = -3
+INK_EXTRA_DY_PLAIN_CSS = -5
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
