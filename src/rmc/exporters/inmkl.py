@@ -55,8 +55,8 @@ CSS_DPI = 96
 RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # Ink-only size vs HTML type. One page-wide scale (handwriting must match).
-# Live-tuned on b87e L1 (L1shrink-1of7 / L12scale-2of5). Fonts absorb the rest.
-INK_SCALE = 0.820
+# 0.820 (L1-tuned) × 1.5 for finer font steps vs boxes.
+INK_SCALE = 1.23
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -279,18 +279,17 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # Uniform INK_SCALE=0.820. Ladder lifted for finer 0.5pt steps vs boxes.
-    # L2 ~mid of old 14–14.5 at new scale; L3/L4 smaller (still too wide @ 10.5/10).
-    si.ParagraphStyle.HEADING: 22.0,
-    si.ParagraphStyle.BOLD: 15.5,
-    si.ParagraphStyle.PLAIN: 9.0,
-    si.ParagraphStyle.BULLET: 9.0,
-    si.ParagraphStyle.BULLET2: 9.0,
-    si.ParagraphStyle.CHECKBOX: 9.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 9.0,
+    # Prior 22/15.5/9.5/9 × 1.5 (with ink). Half-pt snap.
+    si.ParagraphStyle.HEADING: 33.0,
+    si.ParagraphStyle.BOLD: 23.5,
+    si.ParagraphStyle.PLAIN: 13.5,
+    si.ParagraphStyle.BULLET: 13.5,
+    si.ParagraphStyle.BULLET2: 13.5,
+    si.ParagraphStyle.CHECKBOX: 13.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 13.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 9.5
+FONT_SIZE_SECOND_BOLD = 14.5
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
