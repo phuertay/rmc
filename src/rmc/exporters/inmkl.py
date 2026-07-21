@@ -88,7 +88,7 @@ _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = -2  # strokes only; b87e-calibDX-1of5 winner
+INK_EXTRA_DX_CSS = -2  # b87e-fineDX-4of7-dx-2-aniso winner
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
 PAGE_NUDGE_DY_CSS = -9
 # Fallback ink-only DY (pages without typed lines). Per-style overrides below.
