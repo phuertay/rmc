@@ -128,15 +128,15 @@ def html_text_origin_css(
 ) -> Tuple[float, float]:
     """CSS left/top for a text run.
 
-    RM/SVG Y is a baseline; HTML top is the line-box top. Large titles hang far
-    below that top and collide with nearby ink (bd4c554f \"New test\"). Plain
-    @11pt already sits well on al_medio — only shift big heading styles.
-    Also undo Graph's forced <p margin-top:5.5pt> for those runs.
+    RM/SVG Y is a baseline; HTML top is the line-box top. HEADING needs a
+    partial raise so ink neither sits on the glyph bottoms nor clips the tops
+    (bd4c554f). Plain @11pt already matches al_medio — leave it.
     """
     left, top = rm_to_css(rm_x, rm_y)
     if style == si.ParagraphStyle.HEADING:
         top -= ONENOTE_P_MARGIN_PX
-        # ponytail: ~0.8 Cap-height/em for EB Garamond / Georgia fallback
+        # Midpoint: full 0.8×ascent put title above the box; 0 was below.
+        # ponytail: tune after EB Garamond install (metrics differ vs Georgia).
         top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO)
     return left, float(round(top))
 
@@ -167,7 +167,11 @@ FONT_SIZE_PT = {
 }
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
-TEXT_ASCENT_RATIO = 0.8
+# Partial ascent for HEADING only (0.8 overshot above the ink box).
+TEXT_ASCENT_RATIO = 0.35
+# CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
+# the glyph box (64px on a 20pt title left a huge empty line box).
+TEXT_LINE_HEIGHT_EM = 1.2
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
@@ -200,11 +204,10 @@ def _format_line(p) -> str:
 
 def _run_span_style(style: si.ParagraphStyle) -> str:
     """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
-    lh = rm_line_height_css(style)
     parts = [
         f"font-family:{_font_family(style)}",
         f"font-size:{rm_font_size_pt(style):.0f}pt",
-        f"line-height:{lh:.0f}px",
+        f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
     if style == si.ParagraphStyle.BOLD:
         parts.append("font-weight:bold")
