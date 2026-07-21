@@ -101,7 +101,7 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "24pt" in html and "16pt" in html and "10.5pt" in html, html
+    assert "24pt" in html and "17pt" in html and "12pt" in html and "10pt" in html, html
     assert "position:absolute" in html
 
     print(

@@ -165,15 +165,18 @@ FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
     # Export pt ≈ device glyph size. OneNote snaps to ~0.5pt.
-    # Base HEADING 24; BOLD/PLAIN keep ~14.5/21.5 and 9.5/21.5 ratios.
+    # b87e: title / mid / mid-again / body. Two mid lines share BOLD in .rm —
+    # first BOLD uses BOLD pt; later BOLD uses FONT_SIZE_SECOND_BOLD.
     si.ParagraphStyle.HEADING: 24.0,
-    si.ParagraphStyle.BOLD: 16.0,
-    si.ParagraphStyle.PLAIN: 10.5,
-    si.ParagraphStyle.BULLET: 10.5,
-    si.ParagraphStyle.BULLET2: 10.5,
-    si.ParagraphStyle.CHECKBOX: 10.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 10.5,
+    si.ParagraphStyle.BOLD: 17.0,
+    si.ParagraphStyle.PLAIN: 10.0,
+    si.ParagraphStyle.BULLET: 10.0,
+    si.ParagraphStyle.BULLET2: 10.0,
+    si.ParagraphStyle.CHECKBOX: 10.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 10.0,
 }
+# Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
+FONT_SIZE_SECOND_BOLD = 12.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
@@ -183,8 +186,10 @@ TEXT_ASCENT_RATIO = 0.35
 TEXT_LINE_HEIGHT_EM = 1.2
 
 
-def rm_font_size_pt(style: si.ParagraphStyle) -> float:
-    return FONT_SIZE_PT.get(style, 10.5)
+def rm_font_size_pt(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
+    if style == si.ParagraphStyle.BOLD and bold_ordinal > 1:
+        return FONT_SIZE_SECOND_BOLD
+    return FONT_SIZE_PT.get(style, 10.0)
 
 
 def _fmt_pt(pt: float) -> str:
@@ -192,9 +197,9 @@ def _fmt_pt(pt: float) -> str:
     return f"{pt:g}pt"
 
 
-def rm_font_size_css(style: si.ParagraphStyle) -> float:
+def rm_font_size_css(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
     """CSS font-size (px) from style pt table."""
-    return float(round(rm_font_size_pt(style) * CSS_DPI / 72))
+    return float(round(rm_font_size_pt(style, bold_ordinal=bold_ordinal) * CSS_DPI / 72))
 
 
 def _font_family(style: si.ParagraphStyle) -> str:
@@ -217,11 +222,11 @@ def _format_line(p) -> str:
     return _html_escape(raw).replace("\n", "<br/>")
 
 
-def _run_span_style(style: si.ParagraphStyle) -> str:
+def _run_span_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
     """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
     parts = [
         f"font-family:{_font_family(style)}",
-        f"font-size:{_fmt_pt(rm_font_size_pt(style))}",
+        f"font-size:{_fmt_pt(rm_font_size_pt(style, bold_ordinal=bold_ordinal))}",
         f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
     if style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
@@ -229,11 +234,10 @@ def _run_span_style(style: si.ParagraphStyle) -> str:
     return ";".join(parts)
 
 
-def _emit_run_inner(paragraphs) -> str:
+def _emit_run_inner(paragraphs, *, bold_ordinal: int = 1) -> str:
     """Join run lines with <br/> inside one styled span (no <p>)."""
     if not paragraphs:
         return ""
-    # Dominant style = first line; rare mixed runs get bold/heading via nested spans.
     style0 = paragraphs[0].style.value
     bits = []
     for p in paragraphs:
@@ -243,9 +247,11 @@ def _emit_run_inner(paragraphs) -> str:
         if p.style.value == style0:
             bits.append(line)
         else:
-            bits.append(f'<span style="{_run_span_style(p.style.value)}">{line}</span>')
+            bits.append(
+                f'<span style="{_run_span_style(p.style.value, bold_ordinal=bold_ordinal)}">{line}</span>'
+            )
     body = "<br/>".join(bits)
-    return f'<span style="{_run_span_style(style0)}">{body}</span>'
+    return f'<span style="{_run_span_style(style0, bold_ordinal=bold_ordinal)}">{body}</span>'
 
 
 def _text_runs(doc: TextDocument, text_pos_y: float):
@@ -385,10 +391,16 @@ def tree_to_html(tree: SceneTree, output):
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
+        bold_n = 0
         for run in _text_runs(doc, text.pos_y):
             p0, abs_y = run[0]
-            left, top = html_text_origin_css(text.pos_x, abs_y, p0.style.value)
-            inner = _emit_run_inner([p for p, _y in run])
+            st = p0.style.value
+            bold_ord = 1
+            if st == si.ParagraphStyle.BOLD:
+                bold_n += 1
+                bold_ord = bold_n
+            left, top = html_text_origin_css(text.pos_x, abs_y, st)
+            inner = _emit_run_inner([p for p, _y in run], bold_ordinal=bold_ord)
             output.write(
                 f"""
                 <div style="position:absolute;left:{left:.0f}px;top:{top:.0f}px;width:{width_px:.0f}px">{inner}</div>"""
