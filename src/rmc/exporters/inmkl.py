@@ -19,9 +19,9 @@ Coordinate system (one pipeline for ink and typed text)
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
    so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
-6. Ink scale about each group's left edge + vertical mid. L1/L2 use uniform
-   XY (neat box fit). L3/L4 keep height shrink but SX≈1 so the right stroke
-   does not walk into glyphs. HTML type stays unscaled.
+6. Ink uses one page-wide INK_SCALE about each group's left edge + mid-Y
+   (handwriting size must stay consistent). HTML font sizes absorb the
+   remaining box/glyph mismatch. Per-style DX/DY nudges only.
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -54,19 +54,9 @@ CSS_DPI = 96
 # Physical himetric per RM unit (RM coords are screen pixels at SCREEN_DPI).
 RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
-# Ink-only size vs HTML type. 1.0 = true himetric (matches device PDF padding).
-# Uniform page scale cannot fit all lines (box/glyph rises ~1.28→1.72 as type
-# shrinks). INK_SCALE is HEADING; other styles use INK_SCALE_* about each
-# ink-group center (group anchors share text Y on b87e).
-# ponytail: ratios from b87e device PDF glyph/box; HEADING live-tuned 0.85.
-INK_SCALE = 0.820  # b87e-L1shrink-1of5 / L12scale-2of5
-# L2 locked separately (not re-derived from INK_SCALE).
-INK_SCALE_BOLD = 0.690  # b87e-L2scale-2of7
-INK_SCALE_SECOND_BOLD = round(0.85 * (0.59 / 0.78), 3)  # ~0.643 (height; SX=1)
-INK_SCALE_PLAIN = round(0.85 * (0.58 / 0.78), 3)  # ~0.632
-# L3/L4: uniform XY pulled right stroke into glyphs; keep width (SX=1).
-INK_SCALE_X_SECOND_BOLD = 1.0
-INK_SCALE_X_PLAIN = 1.0
+# Ink-only size vs HTML type. One page-wide scale (handwriting must match).
+# Live-tuned on b87e L1 (L1shrink-1of7 / L12scale-2of5). Fonts absorb the rest.
+INK_SCALE = 0.820
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -133,23 +123,12 @@ def set_page_origin(bbox: Tuple[float, float, float, float]) -> None:
 
 
 def rm_ink_scale_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
-    """Per-line ink height shrink so boxes hug HTML fonts."""
-    if style == si.ParagraphStyle.HEADING:
-        return INK_SCALE
-    if style == si.ParagraphStyle.BOLD:
-        return INK_SCALE_SECOND_BOLD if bold_ordinal > 1 else INK_SCALE_BOLD
-    return INK_SCALE_PLAIN
+    """Page-wide ink scale (style ignored — handwriting stays consistent)."""
+    return INK_SCALE
 
 
 def rm_ink_scale_x_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
-    """Width scale. L1/L2 match height (neat fit); L3/L4 stay ~full width."""
-    if style == si.ParagraphStyle.HEADING:
-        return INK_SCALE
-    if style == si.ParagraphStyle.BOLD and bold_ordinal == 1:
-        return INK_SCALE_BOLD
-    if style == si.ParagraphStyle.BOLD:
-        return INK_SCALE_X_SECOND_BOLD
-    return INK_SCALE_X_PLAIN
+    return INK_SCALE
 
 
 def rm_ink_extra_dx_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
@@ -300,18 +279,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # Desktop: glyph PDF 19.5/11.1/8.6/7.7 looked small vs scaled boxes in OneNote
-    # except HEADING. Bump L2–L4 toward scaled box height (~12.1/9.5/8.3 pt).
+    # Uniform INK_SCALE=0.820 → scaled box ≈ 20.6 / 14.1 / 12.1 / 10.8 pt.
+    # Fonts track those (not device glyph PDF); live-tune on OneNote.
     si.ParagraphStyle.HEADING: 20.0,
-    si.ParagraphStyle.BOLD: 12.0,
-    si.ParagraphStyle.PLAIN: 9.0,
-    si.ParagraphStyle.BULLET: 9.0,
-    si.ParagraphStyle.BULLET2: 9.0,
-    si.ParagraphStyle.CHECKBOX: 9.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 9.0,
+    si.ParagraphStyle.BOLD: 14.0,
+    si.ParagraphStyle.PLAIN: 11.0,
+    si.ParagraphStyle.BULLET: 11.0,
+    si.ParagraphStyle.BULLET2: 11.0,
+    si.ParagraphStyle.CHECKBOX: 11.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 11.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 10.0
+FONT_SIZE_SECOND_BOLD = 12.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).

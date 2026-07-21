@@ -1,7 +1,7 @@
-"""b87e: per-line ink-box vs glyph/font scale.
+"""b87e: uniform ink scale + fonts sized to scaled boxes.
 
-Device PDF outlines + .rm boxes. Uniform INK_SCALE cannot fit all four lines
-(box/glyph ~1.28→1.72). Exporter must use per-style scales about each group.
+Ink is one page-wide INK_SCALE. Fonts must fill scaled box heights.
+Device glyph/box ideal_S may still differ by line — that is expected.
 
 Run: poetry run python tests/check_b87e_ink_font_scale.py
 """
@@ -29,7 +29,6 @@ PDF_CANDIDATES = [
     ROOT / "expected" / "b87e_device_render.pdf",
 ]
 PT_PER_RM = 72 / 226
-# Target: scaled box ≈ font. Slight under/over OK (OneNote font metrics).
 OK_LO, OK_HI = 0.90, 1.20
 
 
@@ -127,18 +126,14 @@ def main() -> None:
             f"{label[:28]:28} {g:6.2f} {box_pt:7.2f} {ideal:8.2f} {S:7.3f} {after:8.2f}{flag}"
         )
 
-    ideals = [g / (h * PT_PER_RM) for g, h in zip(glyphs, boxes_rm)]
-    print(
-        f"\nscales={scales}; ideal_S={[round(x, 2) for x in ideals]}; "
-        f"uniform INK_SCALE={ink.INK_SCALE}"
-    )
-    if max(ideals) - min(ideals) > 0.1 and len(set(round(s, 3) for s in scales)) < 2:
-        print("FAIL: ideal_S spread > 0.1 but exporter still uses one scale.")
+    print(f"\nscales={scales}; uniform INK_SCALE={ink.INK_SCALE}")
+    if any(abs(s - ink.INK_SCALE) > 1e-6 for s in scales):
+        print("FAIL: ink scale must be page-wide (all lines == INK_SCALE).")
         sys.exit(1)
     if bad:
-        print(f"FAIL: box/font out of [{OK_LO},{OK_HI}] after per-line scale: {bad}")
+        print(f"FAIL: box/font out of [{OK_LO},{OK_HI}] — retune FONT_SIZE_*: {bad}")
         sys.exit(1)
-    print("ok: per-line ink scales fit all lines")
+    print("ok: uniform ink scale; fonts fill scaled boxes")
 
 
 if __name__ == "__main__":
