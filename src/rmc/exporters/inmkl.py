@@ -51,8 +51,12 @@ CSS_DPI = 96
 # Physical himetric per RM unit (RM coords are screen pixels at SCREEN_DPI).
 RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
-WIDTH_CONV_CONSTANT = RM_PER_INK  # brush size in himetric
-HEIGHT_CONV_CONSTANT = RM_PER_INK
+# Ink-only size vs HTML type. 1.0 = true himetric (matches device PDF padding).
+# <1 shrinks boxes toward page center so they hug glyph-sized fonts (20/11/9/8).
+# ponytail: live-tune via b87e-inkScale ladder; brush width tracks this.
+INK_SCALE = 0.85
+WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
+HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
 
 # OneNote HTML defaults below title (CSS px), expressed in himetric.
@@ -88,6 +92,8 @@ XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 # ----GLOBAL VARIABLES----
 
 min_x = min_y = max_x = max_y = 0
+# Center for INK_SCALE (content bbox mid); set in set_page_origin.
+_ink_cx = _ink_cy = 0.0
 trace_id = 1
 _logger = logging.getLogger(__name__)
 
@@ -96,8 +102,10 @@ _logger = logging.getLogger(__name__)
 
 def set_page_origin(bbox: Tuple[float, float, float, float]) -> None:
     """Freeze RM origin used by every later rm_to_inkml / rm_to_css call."""
-    global min_x, max_x, min_y, max_y
+    global min_x, max_x, min_y, max_y, _ink_cx, _ink_cy
     min_x, max_x, min_y, max_y = bbox
+    _ink_cx = 0.5 * (min_x + max_x)
+    _ink_cy = 0.5 * (min_y + max_y)
 
 
 def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
@@ -106,6 +114,14 @@ def rm_to_inkml(x: float, y: float) -> Tuple[int, int]:
         int((x - min_x) * RM_PER_INK + X_PAD),
         int((y - min_y) * RM_PER_INK + Y_PAD),
     )
+
+
+def rm_to_inkml_stroke(x: float, y: float) -> Tuple[int, int]:
+    """RM point → InkML, scaled about page center (HTML text stays unscaled)."""
+    if INK_SCALE != 1.0:
+        x = (x - _ink_cx) * INK_SCALE + _ink_cx
+        y = (y - _ink_cy) * INK_SCALE + _ink_cy
+    return rm_to_inkml(x, y)
 
 
 def inkml_to_css(value: float) -> float:
@@ -362,7 +378,7 @@ def draw_stroke(item: si.Line, output, trace_id: int, move_pos: Tuple[int, int] 
     coord = []
     move_x, move_y = move_pos
     for pt in item.points:
-        scaled_x, scaled_y = rm_to_inkml(pt.x + move_x, pt.y + move_y)
+        scaled_x, scaled_y = rm_to_inkml_stroke(pt.x + move_x, pt.y + move_y)
         scaled_x += INK_ALIGN_DX + INK_EXTRA_DX
         scaled_y += INK_EXTRA_DY
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
