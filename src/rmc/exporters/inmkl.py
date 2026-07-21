@@ -136,9 +136,9 @@ def html_text_origin_css(
     left, top = rm_to_css(rm_x, rm_y)
     if style == si.ParagraphStyle.HEADING:
         top -= ONENOTE_P_MARGIN_PX
-        # Mid raise; +2 after real fonts (was +5 with Georgia/Segoe fallbacks).
-        # ponytail: EB Garamond metrics differ — retune if still off.
-        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 2
+        # Real EB Garamond: box still low vs title — lower text (+8 vs prior +2).
+        # ponytail: leave global ink (al_medio OK on desktop).
+        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 8
     return left, float(round(top))
 
 
@@ -159,12 +159,13 @@ FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
     si.ParagraphStyle.HEADING: 20.0,
-    si.ParagraphStyle.BOLD: 11.0,
-    si.ParagraphStyle.PLAIN: 11.0,
-    si.ParagraphStyle.BULLET: 11.0,
-    si.ParagraphStyle.BULLET2: 11.0,
-    si.ParagraphStyle.CHECKBOX: 11.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 11.0,
+    # 11pt Noto Sans ran ~1.5 letters wide vs device ink underlines.
+    si.ParagraphStyle.BOLD: 10.0,
+    si.ParagraphStyle.PLAIN: 10.0,
+    si.ParagraphStyle.BULLET: 10.0,
+    si.ParagraphStyle.BULLET2: 10.0,
+    si.ParagraphStyle.CHECKBOX: 10.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 10.0,
 }
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
@@ -376,7 +377,7 @@ def tree_to_html(tree: SceneTree, output):
     <head>
         <title>{page_title}</title>
     </head>
-    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:11pt">""")
+    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:10pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
