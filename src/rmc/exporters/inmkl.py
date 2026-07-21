@@ -280,11 +280,11 @@ FONT_SIZE_PT = {
     # Desktop lock (b87e step2): L1/L2 vs ink boxes; L3/L4 vs PDF glyph scale.
     si.ParagraphStyle.HEADING: 38.5,
     si.ParagraphStyle.BOLD: 27.5,
-    si.ParagraphStyle.PLAIN: 15.5,
-    si.ParagraphStyle.BULLET: 15.5,
-    si.ParagraphStyle.BULLET2: 15.5,
-    si.ParagraphStyle.CHECKBOX: 15.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 15.5,
+    si.ParagraphStyle.PLAIN: 15.0,
+    si.ParagraphStyle.BULLET: 15.0,
+    si.ParagraphStyle.BULLET2: 15.0,
+    si.ParagraphStyle.CHECKBOX: 15.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 15.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
 FONT_SIZE_SECOND_BOLD = 18.0
