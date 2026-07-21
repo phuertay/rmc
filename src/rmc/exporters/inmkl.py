@@ -59,7 +59,7 @@ CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # shrinks). INK_SCALE is HEADING; other styles use INK_SCALE_* about each
 # ink-group center (group anchors share text Y on b87e).
 # ponytail: ratios from b87e device PDF glyph/box; HEADING live-tuned 0.85.
-INK_SCALE = 0.835  # between L12scale 1of5 (0.85) and 2of5 (0.82)
+INK_SCALE = 0.820  # b87e-L12scale-2of5
 # L2 kept at prior 0.708 until separate pick; not re-derived from INK_SCALE.
 INK_SCALE_BOLD = 0.708
 INK_SCALE_SECOND_BOLD = round(0.85 * (0.59 / 0.78), 3)  # ~0.643 (height; SX=1)
