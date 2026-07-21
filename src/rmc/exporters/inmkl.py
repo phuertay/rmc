@@ -287,7 +287,7 @@ FONT_SIZE_PT = {
     si.ParagraphStyle.CHECKBOX_CHECKED: 15.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 17.5
+FONT_SIZE_SECOND_BOLD = 18.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
