@@ -109,15 +109,10 @@ def check_text_y_matches_ink_anchors(path: Path) -> None:
 
     run_tops = []
     ypos = text.pos_y + TEXT_TOP_Y
-    in_run = False
     for p in doc.contents:
         if str(p).strip():
-            if not in_run:
-                _l, top = html_text_origin_css(text.pos_x, ypos, p.style.value)
-                run_tops.append(round(top, 2))
-                in_run = True
-        else:
-            in_run = False
+            _l, top = html_text_origin_css(text.pos_x, ypos, p.style.value)
+            run_tops.append(round(top, 2))
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
     assert tops == run_tops, f"{path.name}: html tops {tops} != anchor-based {run_tops}"
 
@@ -166,8 +161,10 @@ def main() -> None:
     check_pipeline_identity()
     check_text_y_matches_ink_anchors(FIXTURE)
     check_text_y_matches_ink_anchors(RM / "text_and_strokes.rm")
+    check_text_y_matches_ink_anchors(RM / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm")
     check_text_ink_text_fields(FIXTURE)
     check_ink_text_same_origin(RM / "text_and_strokes.rm")
+    check_ink_text_same_origin(RM / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm")
     _, multi = _export(RM / "text_multiple_lines.rm")
     assert len(_abs_tops(multi)) >= 2, multi
     print("ok: unified RM→InkML→CSS + text Y == ink anchors")

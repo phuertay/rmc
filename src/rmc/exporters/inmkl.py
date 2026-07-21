@@ -164,13 +164,15 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    si.ParagraphStyle.HEADING: 20.5,
-    si.ParagraphStyle.BOLD: 9.25,
-    si.ParagraphStyle.PLAIN: 9.25,
-    si.ParagraphStyle.BULLET: 9.25,
-    si.ParagraphStyle.BULLET2: 9.25,
-    si.ParagraphStyle.CHECKBOX: 9.25,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 9.25,
+    # Export pt ≈ device glyph size. OneNote snaps to ~0.5pt.
+    # b87e ink boxes: HEADING tallest; BOLD (device “2nd/3rd”) mid; PLAIN smallest.
+    si.ParagraphStyle.HEADING: 21.5,
+    si.ParagraphStyle.BOLD: 14.5,
+    si.ParagraphStyle.PLAIN: 9.5,
+    si.ParagraphStyle.BULLET: 9.5,
+    si.ParagraphStyle.BULLET2: 9.5,
+    si.ParagraphStyle.CHECKBOX: 9.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 9.5,
 }
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
@@ -182,7 +184,7 @@ TEXT_LINE_HEIGHT_EM = 1.2
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
-    return FONT_SIZE_PT.get(style, 9.25)
+    return FONT_SIZE_PT.get(style, 9.5)
 
 
 def _fmt_pt(pt: float) -> str:
@@ -196,7 +198,8 @@ def rm_font_size_css(style: si.ParagraphStyle) -> float:
 
 
 def _font_family(style: si.ParagraphStyle) -> str:
-    if style == si.ParagraphStyle.HEADING:
+    # Device: title + subheading (BOLD in .rm) → EB Garamond; body → Noto Sans.
+    if style in (si.ParagraphStyle.HEADING, si.ParagraphStyle.BOLD):
         return FONT_FAMILY_SERIF
     return FONT_FAMILY_SANS
 
@@ -221,9 +224,7 @@ def _run_span_style(style: si.ParagraphStyle) -> str:
         f"font-size:{_fmt_pt(rm_font_size_pt(style))}",
         f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
-    if style == si.ParagraphStyle.BOLD:
-        parts.append("font-weight:bold")
-    elif style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
+    if style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
         parts.append("padding-left:1.2em")
     return ";".join(parts)
 
@@ -248,23 +249,16 @@ def _emit_run_inner(paragraphs) -> str:
 
 
 def _text_runs(doc: TextDocument, text_pos_y: float):
-    """Yield (paragraphs, absolute_rm_y) per non-blank run.
+    """Yield one (paragraphs, absolute_rm_y) per non-blank paragraph.
 
     absolute_rm_y matches build_anchor_pos (ink anchors), not svg.draw_text.
+    One div per paragraph so mixed styles (b87e title/heading/body) keep RM Y.
     """
-    # Same walk as build_anchor_pos: record Y, then advance.
     ypos = text_pos_y + TEXT_TOP_Y
-    run = []
     for p in doc.contents:
         if str(p).strip():
-            run.append((p, ypos))
-        elif run:
-            yield run
-            run = []
+            yield [(p, ypos)]
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
-    if run:
-        yield run
-
 
 def tree_to_xml(tree: SceneTree, output):
     """
