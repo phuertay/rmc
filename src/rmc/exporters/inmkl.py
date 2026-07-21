@@ -72,7 +72,7 @@ _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = 0  # strokes only
+INK_EXTRA_DX_CSS = -2  # strokes only; desktop boxes a hair right of type
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
 PAGE_NUDGE_DY_CSS = -9
 # Extra ink-only lift on top of PAGE_NUDGE (boxes still sit low vs type).
