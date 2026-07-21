@@ -135,9 +135,9 @@ def html_text_origin_css(
     left, top = rm_to_css(rm_x, rm_y)
     if style == si.ParagraphStyle.HEADING:
         top -= ONENOTE_P_MARGIN_PX
-        # Midpoint: full 0.8×ascent put title above the box; 0 was below.
-        # ponytail: tune after EB Garamond install (metrics differ vs Georgia).
-        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO)
+        # Mid raise; +2 after user said box still slightly low vs title.
+        # ponytail: retune after EB Garamond install.
+        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 2
     return left, float(round(top))
 
 
