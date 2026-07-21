@@ -91,7 +91,7 @@ INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = 0  # default / HEADING (b87e-DX-6of7)
 # Per-style ink DX (CSS px). L2 slightly off with shared DX — ladder next.
 INK_EXTRA_DX_HEADING_CSS = 0
-INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); live-tune
+INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); b87e-L2DX-4of7
 INK_EXTRA_DX_SECOND_BOLD_CSS = 0
 INK_EXTRA_DX_PLAIN_CSS = 0
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
