@@ -130,10 +130,28 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
+# reMarkable typed text is Noto Serif (EB Garamond for “fancy”). Sizes match
+# svg.draw_text (physical pt in the same 72dpi space as SCALE=72/SCREEN_DPI).
+# ponytail: OneNote may substitute Georgia if Noto missing.
+FONT_FAMILY = "'Noto Serif',Georgia,serif"
+FONT_SIZE_PT = {
+    si.ParagraphStyle.HEADING: 14.0,
+    si.ParagraphStyle.BOLD: 8.0,
+    si.ParagraphStyle.PLAIN: 7.0,
+    si.ParagraphStyle.BULLET: 7.0,
+    si.ParagraphStyle.BULLET2: 7.0,
+    si.ParagraphStyle.CHECKBOX: 7.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 7.0,
+}
+
+
+def rm_font_size_pt(style: si.ParagraphStyle) -> float:
+    return FONT_SIZE_PT.get(style, 7.0)
+
+
 def rm_font_size_css(style: si.ParagraphStyle) -> float:
-    """CSS font-size (px) from RM line box so type scales with ink."""
-    # ponytail: 0.55≈cap-height share of RM line; tweak if OneNote still looks off
-    return float(round(rm_line_height_css(style) * 0.55))
+    """CSS font-size (px) matching svg.draw_text pt sizes."""
+    return float(round(rm_font_size_pt(style) * CSS_DPI / 72))
 
 
 def _html_escape(s: str) -> str:
@@ -152,13 +170,12 @@ def _format_line(p) -> str:
 def _run_span_style(style: si.ParagraphStyle) -> str:
     """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
     lh = rm_line_height_css(style)
-    fs_pt = rm_font_size_css(style) * 72 / 96  # px → pt
     parts = [
-        "font-family:Calibri",
-        f"font-size:{fs_pt:.1f}pt",
+        f"font-family:{FONT_FAMILY}",
+        f"font-size:{rm_font_size_pt(style):.0f}pt",
         f"line-height:{lh:.0f}px",
     ]
-    if style in (si.ParagraphStyle.HEADING, si.ParagraphStyle.BOLD):
+    if style == si.ParagraphStyle.BOLD:
         parts.append("font-weight:bold")
     elif style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
         parts.append("padding-left:1.2em")
@@ -324,7 +341,7 @@ def tree_to_html(tree: SceneTree, output):
     <head>
         <title>{page_title}</title>
     </head>
-    <body data-absolute-enabled="true" style="font-family:Calibri;font-size:11pt">""")
+    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY};font-size:7pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
