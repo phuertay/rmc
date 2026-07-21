@@ -74,8 +74,8 @@ CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = 0  # strokes only
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
-PAGE_NUDGE_DY_CSS = -2
-INK_EXTRA_DY_CSS = -3 + PAGE_NUDGE_DY_CSS  # -5
+PAGE_NUDGE_DY_CSS = -4
+INK_EXTRA_DY_CSS = -3 + PAGE_NUDGE_DY_CSS  # -7
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
