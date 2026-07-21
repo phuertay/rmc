@@ -264,10 +264,10 @@ def draw_text(text: si.Text, output):
                     font: 24pt "EB Garamond", Garamond, "Palatino Linotype", Palatino, Georgia, serif;
                 }
                 text.bold {
-                    font: 10pt "Noto Sans", "Segoe UI", Arial, sans-serif bold;
+                    font: 11pt "Noto Sans", "Segoe UI", Arial, sans-serif bold;
                 }
                 text, text.plain {
-                    font: 10pt "Noto Sans", "Segoe UI", Arial, sans-serif;
+                    font: 11pt "Noto Sans", "Segoe UI", Arial, sans-serif;
                 }
             </style>
 ''')
