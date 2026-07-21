@@ -277,10 +277,10 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # L1 ≈ box*S; L2–L4 follow device PDF glyph-height ratios (not ink-box
-    # heights — boxes are padded, which made L3/L4 huge vs real type).
+    # L1/L2 ≈ ink-box*S (device boxes hug type). L3/L4 stay on PDF glyph
+    # ratios — those boxes are padded; box-fit made body type huge.
     si.ParagraphStyle.HEADING: 40.0,
-    si.ParagraphStyle.BOLD: 23.0,
+    si.ParagraphStyle.BOLD: 27.0,
     si.ParagraphStyle.PLAIN: 15.5,
     si.ParagraphStyle.BULLET: 15.5,
     si.ParagraphStyle.BULLET2: 15.5,
