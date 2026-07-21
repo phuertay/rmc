@@ -278,17 +278,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # Matched to INK_SCALE=1.5 from prior 33/23.5/14.5/13.5 @ 1.23 (×1.5/1.23).
-    si.ParagraphStyle.HEADING: 40.0,
-    si.ParagraphStyle.BOLD: 28.5,
-    si.ParagraphStyle.PLAIN: 16.5,
-    si.ParagraphStyle.BULLET: 16.5,
-    si.ParagraphStyle.BULLET2: 16.5,
-    si.ParagraphStyle.CHECKBOX: 16.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 16.5,
+    # Box-fit @ INK_SCALE=1.5: font_pt ≈ box_pt * S (half-pt snap). Not a
+    # proportional lift of the old 0.82 ladder — that left L3/L4 cramped.
+    si.ParagraphStyle.HEADING: 37.5,
+    si.ParagraphStyle.BOLD: 25.5,
+    si.ParagraphStyle.PLAIN: 19.5,
+    si.ParagraphStyle.BULLET: 19.5,
+    si.ParagraphStyle.BULLET2: 19.5,
+    si.ParagraphStyle.CHECKBOX: 19.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 19.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 17.5
+FONT_SIZE_SECOND_BOLD = 22.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
