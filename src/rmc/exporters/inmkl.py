@@ -19,9 +19,9 @@ Coordinate system (one pipeline for ink and typed text)
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
    so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
-6. Ink strokes scale about each group's left edge + vertical mid with a
-   per-style factor (HEADING/BOLD/second-BOLD/PLAIN). HTML type stays
-   unscaled. Center-X pivot pushed boxes right of type by ~(1−S)/2·width.
+6. Ink strokes scale **height only** about each group's vertical mid with a
+   per-style factor (HEADING/BOLD/second-BOLD/PLAIN). Width stays device-true
+   so the right stroke does not walk into glyphs. HTML type stays unscaled.
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -197,12 +197,14 @@ def rm_to_inkml_stroke(
     cy: float | None = None,
     scale: float | None = None,
 ) -> Tuple[int, int]:
-    """RM point → InkML; scale about group center (HTML text stays unscaled)."""
+    """RM point → InkML; scale height about mid-Y only (keep width).
+
+    Uniform XY scale about the left edge pulled the right stroke left into
+    the glyphs on smaller lines (b87e L3/L4). HTML type stays unscaled.
+    """
     s = INK_SCALE if scale is None else scale
-    ox = _ink_cx if cx is None else cx
     oy = _ink_cy if cy is None else cy
     if s != 1.0:
-        x = (x - ox) * s + ox
         y = (y - oy) * s + oy
     return rm_to_inkml(x, y)
 
@@ -388,7 +390,7 @@ def tree_to_xml(tree: SceneTree, output):
 
 
 def _group_scale_pivot(lines: list, move_pos: Tuple[float, float]) -> Tuple[float, float]:
-    """Scale pivot: left edge + vertical mid (center-X drifts boxes right of type)."""
+    """Scale pivot: left unused (SX=1); cy = vertical mid for height shrink."""
     mx, my = move_pos
     xs, ys = [], []
     for line in lines:
