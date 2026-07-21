@@ -164,13 +164,13 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    si.ParagraphStyle.HEADING: 21.5,
-    si.ParagraphStyle.BOLD: 9.75,
-    si.ParagraphStyle.PLAIN: 9.75,
-    si.ParagraphStyle.BULLET: 9.75,
-    si.ParagraphStyle.BULLET2: 9.75,
-    si.ParagraphStyle.CHECKBOX: 9.75,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 9.75,
+    si.ParagraphStyle.HEADING: 20.5,
+    si.ParagraphStyle.BOLD: 9.25,
+    si.ParagraphStyle.PLAIN: 9.25,
+    si.ParagraphStyle.BULLET: 9.25,
+    si.ParagraphStyle.BULLET2: 9.25,
+    si.ParagraphStyle.CHECKBOX: 9.25,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 9.25,
 }
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
@@ -182,7 +182,7 @@ TEXT_LINE_HEIGHT_EM = 1.2
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
-    return FONT_SIZE_PT.get(style, 9.75)
+    return FONT_SIZE_PT.get(style, 9.25)
 
 
 def _fmt_pt(pt: float) -> str:
@@ -387,7 +387,7 @@ def tree_to_html(tree: SceneTree, output):
     <head>
         <title>{page_title}</title>
     </head>
-    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:9.75pt">""")
+    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:9.25pt">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
