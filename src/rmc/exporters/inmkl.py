@@ -19,9 +19,9 @@ Coordinate system (one pipeline for ink and typed text)
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
    so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
-6. Ink strokes scale about each group's bbox center with a per-style factor
-   (HEADING/BOLD/second-BOLD/PLAIN). HTML type stays unscaled. Uniform page
-   scale cannot match all font sizes (device box padding grows as type shrinks).
+6. Ink strokes scale about each group's left edge + vertical mid with a
+   per-style factor (HEADING/BOLD/second-BOLD/PLAIN). HTML type stays
+   unscaled. Center-X pivot pushed boxes right of type by ~(1−S)/2·width.
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -361,15 +361,15 @@ def tree_to_xml(tree: SceneTree, output):
     output.write("</inkml:ink>\n")
 
 
-def _group_line_center(lines: list, move_pos: Tuple[float, float]) -> Tuple[float, float]:
-    """Absolute RM center of Line strokes in a group (scale pivot)."""
+def _group_scale_pivot(lines: list, move_pos: Tuple[float, float]) -> Tuple[float, float]:
+    """Scale pivot: left edge + vertical mid (center-X drifts boxes right of type)."""
     mx, my = move_pos
     xs, ys = [], []
     for line in lines:
         for pt in line.points:
             xs.append(pt.x + mx)
             ys.append(pt.y + my)
-    return 0.5 * (min(xs) + max(xs)), 0.5 * (min(ys) + max(ys))
+    return min(xs), 0.5 * (min(ys) + max(ys))
 
 
 def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
@@ -378,7 +378,7 @@ def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
     if lines:
         # Group move_pos Y matches typed-line anchor on b87e → pick that scale.
         s = nearest_ink_scale(move_pos[1])
-        cx, cy = _group_line_center(lines, move_pos)
+        cx, cy = _group_scale_pivot(lines, move_pos)
         scale_ctx = (cx, cy, s)
     for child_id in item.children:
         child = item.children[child_id]
