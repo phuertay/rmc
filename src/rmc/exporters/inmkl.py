@@ -387,7 +387,7 @@ def tree_to_html(tree: SceneTree, output):
     <head>
         <title>{page_title}</title>
     </head>
-    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:9.25pt">""")
+    <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:{_fmt_pt(rm_font_size_pt(si.ParagraphStyle.PLAIN))}">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
         width_px = rm_delta_to_css(float(text.width))
