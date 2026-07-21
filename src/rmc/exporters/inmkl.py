@@ -75,8 +75,8 @@ INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
 INK_EXTRA_DX_CSS = -2  # strokes only; desktop boxes a hair right of type
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
 PAGE_NUDGE_DY_CSS = -9
-# Extra ink-only lift on top of PAGE_NUDGE (boxes still sit low vs type).
-INK_EXTRA_DY_CSS = -6 + PAGE_NUDGE_DY_CSS  # -15
+# Ink-only: was −6 (boxes high on b87e first 3 lines) → less lift.
+INK_EXTRA_DY_CSS = -2 + PAGE_NUDGE_DY_CSS  # -11
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -165,14 +165,14 @@ FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
     # Export pt ≈ device glyph size. OneNote snaps to ~0.5pt.
-    # b87e ink boxes: HEADING tallest; BOLD (device “2nd/3rd”) mid; PLAIN smallest.
-    si.ParagraphStyle.HEADING: 21.5,
-    si.ParagraphStyle.BOLD: 14.5,
-    si.ParagraphStyle.PLAIN: 9.5,
-    si.ParagraphStyle.BULLET: 9.5,
-    si.ParagraphStyle.BULLET2: 9.5,
-    si.ParagraphStyle.CHECKBOX: 9.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 9.5,
+    # Base HEADING 24; BOLD/PLAIN keep ~14.5/21.5 and 9.5/21.5 ratios.
+    si.ParagraphStyle.HEADING: 24.0,
+    si.ParagraphStyle.BOLD: 16.0,
+    si.ParagraphStyle.PLAIN: 10.5,
+    si.ParagraphStyle.BULLET: 10.5,
+    si.ParagraphStyle.BULLET2: 10.5,
+    si.ParagraphStyle.CHECKBOX: 10.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 10.5,
 }
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
@@ -184,7 +184,7 @@ TEXT_LINE_HEIGHT_EM = 1.2
 
 
 def rm_font_size_pt(style: si.ParagraphStyle) -> float:
-    return FONT_SIZE_PT.get(style, 9.5)
+    return FONT_SIZE_PT.get(style, 10.5)
 
 
 def _fmt_pt(pt: float) -> str:
