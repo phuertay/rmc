@@ -51,14 +51,16 @@ def _ink_boxes_css(xml: str):
         pts = [p.split() for p in t.split(",") if p.strip()]
         xs = [int(p[0]) for p in pts]
         ys = [int(p[1]) for p in pts]
-        if max(ys) - min(ys) < 200:
+        w, h = max(xs) - min(xs), max(ys) - min(ys)
+        # INK_SCALE=1.5 can lift scrap strokes past a bare height floor.
+        if h < 400 or w < 1000:
             continue
         boxes.append(
             (
                 min(xs) * 96 / 2540,
                 min(ys) * 96 / 2540,
-                (max(xs) - min(xs)) * 96 / 2540,
-                (max(ys) - min(ys)) * 96 / 2540,
+                w * 96 / 2540,
+                h * 96 / 2540,
             )
         )
     return sorted(boxes, key=lambda b: b[1])
