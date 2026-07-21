@@ -88,7 +88,12 @@ _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = 0  # b87e-DX-6of7-dx0-L1s0p820 winner
+INK_EXTRA_DX_CSS = 0  # default / HEADING (b87e-DX-6of7)
+# Per-style ink DX (CSS px). L2 slightly off with shared DX — ladder next.
+INK_EXTRA_DX_HEADING_CSS = 0
+INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); live-tune
+INK_EXTRA_DX_SECOND_BOLD_CSS = 0
+INK_EXTRA_DX_PLAIN_CSS = 0
 # Desktop: everything slightly high vs title chrome — nudge ink + HTML up together.
 PAGE_NUDGE_DY_CSS = -9
 # Fallback ink-only DY (pages without typed lines). Per-style overrides below.
@@ -111,8 +116,8 @@ XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 min_x = min_y = max_x = max_y = 0
 # Fallback center when no per-group scale (page content mid).
 _ink_cx = _ink_cy = 0.0
-# (y_rm, sx, sy, dy_css) for nearest-text lookup; set in prepare_ink_scales.
-_ink_scale_ys: List[Tuple[float, float, float, float]] = []
+# (y_rm, sx, sy, dx_css, dy_css) for nearest-text lookup; set in prepare_ink_scales.
+_ink_scale_ys: List[Tuple[float, float, float, float, float]] = []
 trace_id = 1
 _logger = logging.getLogger(__name__)
 
@@ -147,6 +152,15 @@ def rm_ink_scale_x_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1)
     return INK_SCALE_X_PLAIN
 
 
+def rm_ink_extra_dx_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
+    """Per-line ink X nudge (CSS px)."""
+    if style == si.ParagraphStyle.HEADING:
+        return INK_EXTRA_DX_HEADING_CSS
+    if style == si.ParagraphStyle.BOLD:
+        return INK_EXTRA_DX_SECOND_BOLD_CSS if bold_ordinal > 1 else INK_EXTRA_DX_BOLD_CSS
+    return INK_EXTRA_DX_PLAIN_CSS
+
+
 def rm_ink_extra_dy_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
     """Per-line ink Y nudge (CSS px). Smaller type needs more lift on b87e."""
     if style == si.ParagraphStyle.HEADING:
@@ -157,7 +171,7 @@ def rm_ink_extra_dy_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int
 
 
 def prepare_ink_scales(tree: SceneTree) -> None:
-    """Map each typed paragraph Y → (sx, sy, dy_css)."""
+    """Map each typed paragraph Y → (sx, sy, dx_css, dy_css)."""
     global _ink_scale_ys
     _ink_scale_ys = []
     text = tree.root_text
@@ -178,18 +192,19 @@ def prepare_ink_scales(tree: SceneTree) -> None:
                     ypos,
                     rm_ink_scale_x_for_style(st, bold_ordinal=bold_ord),
                     rm_ink_scale_for_style(st, bold_ordinal=bold_ord),
+                    rm_ink_extra_dx_css_for_style(st, bold_ordinal=bold_ord),
                     rm_ink_extra_dy_css_for_style(st, bold_ordinal=bold_ord),
                 )
             )
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
 
 
-def nearest_ink_params(y_rm: float) -> Tuple[float, float, float]:
-    """Return (sx, sy, dy_css) for the typed line nearest to y_rm."""
+def nearest_ink_params(y_rm: float) -> Tuple[float, float, float, float]:
+    """Return (sx, sy, dx_css, dy_css) for the typed line nearest to y_rm."""
     if not _ink_scale_ys:
-        return INK_SCALE, INK_SCALE, INK_EXTRA_DY_CSS
-    _y, sx, sy, dy = min(_ink_scale_ys, key=lambda t: abs(t[0] - y_rm))
-    return sx, sy, dy
+        return INK_SCALE, INK_SCALE, INK_EXTRA_DX_CSS, INK_EXTRA_DY_CSS
+    _y, sx, sy, dx, dy = min(_ink_scale_ys, key=lambda t: abs(t[0] - y_rm))
+    return sx, sy, dx, dy
 
 
 def nearest_ink_scale(y_rm: float) -> float:
@@ -424,11 +439,12 @@ def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
     lines = [c for c in item.children.values() if isinstance(c, si.Line)]
     scale_ctx = None
     if lines:
-        # Group move_pos Y matches typed-line anchor on b87e → pick sx/sy/DY.
-        sx, sy, dy_css = nearest_ink_params(move_pos[1])
+        # Group move_pos Y matches typed-line anchor on b87e → pick sx/sy/DX/DY.
+        sx, sy, dx_css, dy_css = nearest_ink_params(move_pos[1])
         cx, cy = _group_scale_pivot(lines, move_pos)
+        dx_hm = round(dx_css / CSS_PER_HIMETRIC)
         dy_hm = round(dy_css / CSS_PER_HIMETRIC)
-        scale_ctx = (cx, cy, sx, sy, dy_hm)
+        scale_ctx = (cx, cy, sx, sy, dx_hm, dy_hm)
     for child_id in item.children:
         child = item.children[child_id]
         _logger.debug("Group child: %s %s", child_id, type(child))
@@ -501,7 +517,7 @@ def draw_stroke(
     output,
     trace_id: int,
     move_pos: Tuple[int, int] = (0, 0),
-    scale_ctx: Tuple[float, float, float, float, int] | None = None,
+    scale_ctx: Tuple[float, float, float, float, int, int] | None = None,
 ) -> None:
     if _logger.root.level == logging.DEBUG:
         _logger.debug("Drawing stroke %d from node %s with %d points", trace_id, item.node_id, len(item.points))
@@ -509,14 +525,14 @@ def draw_stroke(
     coord = []
     move_x, move_y = move_pos
     cx = cy = sx = sy = None
-    dy = INK_EXTRA_DY
+    dx, dy = INK_EXTRA_DX, INK_EXTRA_DY
     if scale_ctx is not None:
-        cx, cy, sx, sy, dy = scale_ctx
+        cx, cy, sx, sy, dx, dy = scale_ctx
     for pt in item.points:
         scaled_x, scaled_y = rm_to_inkml_stroke(
             pt.x + move_x, pt.y + move_y, cx=cx, cy=cy, scale_x=sx, scale_y=sy
         )
-        scaled_x += INK_ALIGN_DX + INK_EXTRA_DX
+        scaled_x += INK_ALIGN_DX + dx
         scaled_y += dy
         scaled_pressure = int(pt.pressure * PRESSURE_CONV_CONSTANT)
         coord.append(f"{scaled_x} {scaled_y} {scaled_pressure}")
