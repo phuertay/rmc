@@ -103,6 +103,14 @@ def main() -> None:
         assert s in html, s
     assert "24pt" in html and "17pt" in html and "13.5pt" in html and "10pt" in html, html
     assert "position:absolute" in html
+    # Faces from device PDF: L1/L2 EB Garamond; L3/L4 Noto Sans
+    assert html.count("EB Garamond") >= 2
+    assert html.count("Noto Sans") >= 2
+    assert "This would be the third" in html
+    third = html.split("This would be the third")[0].rsplit("font-family:", 1)[-1]
+    assert third.startswith("'Noto Sans'"), third[:60]
+    second = html.split("Then this is the second")[0].rsplit("font-family:", 1)[-1]
+    assert second.startswith("'EB Garamond'"), second[:60]
 
     print(
         f"ok b87e: 4 lines + {len(boxes)} boxes; "

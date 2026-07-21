@@ -157,8 +157,8 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# Device faces (from tablet screenshot + remarkable-rm / fontconfig):
-#   title/subheading → EB Garamond; body → Noto Sans.
+# Device faces (b87e PDF glyph outlines + remarkable fontconfig):
+#   title + first mid (BOLD#1) → EB Garamond; second mid (BOLD#2) + body → Noto Sans.
 # OneNote cannot embed fonts; stack closest Windows/Office stand-ins after.
 # ponytail: install EB Garamond + Noto Sans for a true match.
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
@@ -201,9 +201,12 @@ def rm_font_size_css(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> floa
     return float(round(rm_font_size_pt(style, bold_ordinal=bold_ordinal) * CSS_DPI / 72))
 
 
-def _font_family(style: si.ParagraphStyle) -> str:
-    # Device: title + subheading (BOLD in .rm) → EB Garamond; body → Noto Sans.
-    if style in (si.ParagraphStyle.HEADING, si.ParagraphStyle.BOLD):
+def _font_family(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
+    # Device PDF outlines (b87e): L1 HEADING + L2 first BOLD → EB Garamond;
+    # L3 second BOLD + L4 PLAIN → Noto Sans. (.rm stores L2/L3 both as BOLD.)
+    if style == si.ParagraphStyle.HEADING:
+        return FONT_FAMILY_SERIF
+    if style == si.ParagraphStyle.BOLD and bold_ordinal == 1:
         return FONT_FAMILY_SERIF
     return FONT_FAMILY_SANS
 
@@ -224,7 +227,7 @@ def _format_line(p) -> str:
 def _run_span_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
     """Typography OneNote keeps on <span> (div styles get stripped; <p> gets 5.5pt margins)."""
     parts = [
-        f"font-family:{_font_family(style)}",
+        f"font-family:{_font_family(style, bold_ordinal=bold_ordinal)}",
         f"font-size:{_fmt_pt(rm_font_size_pt(style, bold_ordinal=bold_ordinal))}",
         f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
