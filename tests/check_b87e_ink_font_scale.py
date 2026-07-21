@@ -29,8 +29,8 @@ PDF_CANDIDATES = [
     ROOT / "expected" / "b87e_device_render.pdf",
 ]
 PT_PER_RM = 72 / 226
-# Fonts may sit under padded boxes (esp. L3/L4 when deliberately small).
-OK_LO, OK_HI = 0.85, 1.35
+# L2–L4 track PDF glyph ratios (smaller than padded ink boxes).
+OK_LO, OK_HI = 0.85, 1.45
 
 
 def _path_points(s: str):
