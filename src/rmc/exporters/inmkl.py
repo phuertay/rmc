@@ -55,7 +55,8 @@ CSS_DPI = 96
 RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # Ink-only size vs HTML type. One page-wide scale (handwriting must match).
-INK_SCALE = 1.5
+# b87e-calibS 20260721-214654: between 1of5 (1.50) and 2of5 (1.65).
+INK_SCALE = 1.575
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -84,14 +85,14 @@ INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); b87e-L2DX-4of7
 INK_EXTRA_DX_SECOND_BOLD_CSS = 0
 INK_EXTRA_DX_PLAIN_CSS = 0
 # Desktop page nudge (fallback pages without typed lines).
-PAGE_NUDGE_DY_CSS = 1
+PAGE_NUDGE_DY_CSS = 2
 # Fallback ink-only DY. Per-style overrides below.
 INK_EXTRA_DY_CSS = PAGE_NUDGE_DY_CSS
-# b87e-calibDY 20260721-214235: between 3of5 and 4of5 (ink was high @ old −9/−11/−13/−15).
-INK_EXTRA_DY_HEADING_CSS = 1
-INK_EXTRA_DY_BOLD_CSS = -1
-INK_EXTRA_DY_SECOND_BOLD_CSS = -3
-INK_EXTRA_DY_PLAIN_CSS = -5
+# b87e-calibDY2 20260721-214654: between 1of5 and 2of5 (prior mid still high).
+INK_EXTRA_DY_HEADING_CSS = 2
+INK_EXTRA_DY_BOLD_CSS = 0
+INK_EXTRA_DY_SECOND_BOLD_CSS = -2
+INK_EXTRA_DY_PLAIN_CSS = -4
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
 
@@ -278,18 +279,17 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # Box-fit @ INK_SCALE=1.5: font_pt ≈ box_pt * S (half-pt snap). Not a
-    # proportional lift of the old 0.82 ladder — that left L3/L4 cramped.
-    si.ParagraphStyle.HEADING: 37.5,
-    si.ParagraphStyle.BOLD: 25.5,
-    si.ParagraphStyle.PLAIN: 19.5,
-    si.ParagraphStyle.BULLET: 19.5,
-    si.ParagraphStyle.BULLET2: 19.5,
-    si.ParagraphStyle.CHECKBOX: 19.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 19.5,
+    # Box-fit @ INK_SCALE=1.575: font_pt ≈ box_pt * S (half-pt snap).
+    si.ParagraphStyle.HEADING: 39.5,
+    si.ParagraphStyle.BOLD: 27.0,
+    si.ParagraphStyle.PLAIN: 20.5,
+    si.ParagraphStyle.BULLET: 20.5,
+    si.ParagraphStyle.BULLET2: 20.5,
+    si.ParagraphStyle.CHECKBOX: 20.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 20.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 22.0
+FONT_SIZE_SECOND_BOLD = 23.0
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
