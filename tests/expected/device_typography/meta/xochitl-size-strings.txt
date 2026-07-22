@@ -1,0 +1,260 @@
+                "typography": ArkTokens.Style.label.lg_strong,
+                "typography": Details.pathTokens("title.md"),
+                "typography": root.type.item.label.t
+                Layout.maximumHeight: root.tokens.status.idle.typography.fontSize * root.tokens.status.idle.typography.lineHeight
+                typography: hiddenStatus ? root.tokens.status.idle.hiddenTypography : root.tokens.status.idle.typography
+                typography: root.dStyle.typography
+                typography: root.lStyle.typography
+                typography: root.tokens.content.label.idle.typography
+                typography: root.tokens.label.idle.typography
+                typography: root.typography
+            Layout.preferredHeight: lineHeight * lineCount
+            Typography {
+            active: !!root.title || !!root.description
+            capitalization: root.typography.textCase
+            family: root.typography.fontFamily
+            id: titleItem
+            labelStyle: root.type.text.title
+            labelStyle: root.type.title ?? {
+            labelStyle: root.type.title.idle
+            letterSpacing: root.typography.letterSpacing
+            lineHeight: 1.2
+            lineHeight: root.type.icon.sizing
+            objectName: "ActionBarTitle"
+            pixelSize: root.typography.fontSize
+            return Math.max(0, 2 * Math.min(_content.width / 2 - item.x, item.x + item.width - _content.width / 2) - 32); // 16px is the minimum space for the title
+            return root.typography.lineHeight
+            sourceComponent: titleComponent
+            spacing: Math.round(root.typography.fontSize * root.typography.lineHeight)/2
+            text: root.title
+            typography: (button.accessibility ? button.tokens.content?.label?.idle.typography_a11y : button.tokens.content?.label?.idle.typography) ?? ArkTokens.Style.label.md
+            typography: ArkTokens.Style.label.md
+            typography: root.typography
+            visible: !!root.title
+            visible: !!root.type.title && !!root.title
+            weight: root.typography.fontWeight
+            width: root.maximumTitleWidth
+        bottomPadding: lineCount > 1 ? 0 : (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        buttonSize: ButtonBase.Size.XSmall // size is small but typography is even smaller
+        capitalization: root.typography.textCase
+        family: root.typography.fontFamily
+        height: content.lineHeight
+        height: lineCount*lineHeight
+        if (root.typography.lineHeight >= root.typography.fontSize) {
+        letterSpacing: root.typography.letterSpacing
+        pixelSize: root.typography.fontSize
+        property var style: ArkTokens.ActionBar.primary.title ?? ArkTokens.ActionBar.primary.description
+        readonly property var spaceForTitle: Math.max(...children.map(item => {
+        return Math.round(root.typography.fontSize * root.typography.lineHeight)
+        text: "Body Text"
+        text: "Title Large"
+        topPadding: (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        type: ArkControls.Body.MediumStrong
+        type: ArkControls.Title.Large
+        type: Details.iconButtonType(root.type.text.title.fill, root.type.background.idle.fill)
+        typography: ArkTokens.Style.label.md
+        typography: root.tokens.content.label ? root.tokens.content.label.idle.typography : ArkTokens.Style.label.md
+        typography: root.tokens.label.idle.typography
+        typography: root.type.content.label.idle.typography
+        typography: style.typography
+        weight: root.typography.fontWeight
+       Body types
+       Title style
+    /*! optional title in the center of background. 
+    /// Label for the ActionBar. Either title or description, depending on the type
+    /// Limit title width. Default is 60% of the bar
+    /// Provide typography token
+    /// Secondary bar title
+    /// Switch off antialiasing of the title
+    /// Switch off antialiasing of title and description
+    /// Switch off title antialiasing
+    /// Title text
+    /// title text
+    /// typography tokens
+    @note a spacer (empty Item with Layout.fillWidth: true) is used to calculate available space for the title.
+    @note if the title is too long it will be truncated with "..."
+    ArkControls.Body {
+    ArkControls.Title {
+    attachment: ArkControls.Body {
+    lineHeight: {
+    lineHeightMode: Text.FixedHeight
+    property Component titleComponent: Column {
+    property int type: Title.Type.Medium
+    property real contentOffset: !!root.title ? label.implicitHeight + root.type.title.container.paddingBottom : 0
+    property real maximumTitleWidth: Math.min(_content.spaceForTitle, root.width * 0.6)
+    property string title
+    property var type: Body.Type.Medium
+    property var typography
+    property var typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["list.lg", "list.lg_compact", "list.md"][root.type])
+    property var typography: root.type.item.label.idle.typography
+    required property var typography
+    spacing: root.typography.fontSize/2
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + "caption.md")
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["body.md", "body.md_low", "body.md_strong", "body.sm", "body.lg"][root.type])
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["label.lg_strong", "label.lg_subtle", "label.md", "label.sm_strong", "label.sm_subtle", "label.xl_strong"][root.type])
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["title.md", "title.md_alt", "title.lg", "title.xl", "title.x2l"][root.type])
+    typography: labelStyle?.typography ?? ArkTokens.Style.label.md
+   with body {}
+'fontSize' must be a positive value
+(font:|font-size:)\s?([0-9]*[.])?[0-9]+px
+*N12_GLOBAL__N_122ParagraphStyleUserDataE
+*ZN15SceneController18createRootDocumentERKSt8optionalIN5scene14ParagraphStyleEES0_IdEEUlP5SceneE_
+*ZN20SceneCheckboxManagerC4EP5SceneP13SceneTextItemEUlN9__gnu_cxx17__normal_iteratorIPN6detail12CheckboxInfoESt6vectorIS7_SaIS7_EEEERKN5scene14ParagraphStyleEE_
+*ZNK15SceneController17setParagraphStyleERKN5scene14ParagraphStyleEN13SceneTextItem14IndentHandlingEEUlPK5SceneE_
+, body=
+/*!  A container with a title and a list of CellItem(s).
+/*!  A container with an optional title in the center. Container items are arranged in a row
+08pT
+0PX!
+0PX@
+0PX@ 
+0PX@!
+0PX@"
+0PX@#
+0PX@$
+0PX@%
+0PX@&
+0PX@'
+0PX@(
+0PX@)
+0PX@*
+0PX@+
+0PX@,
+0PX@-
+0PX@.
+0PX@/
+0PX@0
+0PX@1
+0PX@2
+0PX@3
+0PX@4
+0PX@5
+0PX@6
+0PX@8
+0PX@9
+0PX@:
+0PX@<
+0PX@=
+0PX@>
+0PX@H
+1PX@
+1PX@"
+1PX@(
+1PX@,
+1PX@3
+1PX@5
+1PX@9
+1PX@:
+1PX@B
+1PX@I
+1pxy
+2PX@
+2pXOiz}
+55ptt
+5PXBP
+5Pt|
+6PX!
+6pt>
+7PX{K
+8PX!
+8PXLNp
+8PtT]
+8pXXqm
+:title
+:titleColumn
+<svg width="%1" height="%2" viewBox="%3 %4 %5 %6" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>%7</title>\n
+A control with a notch pointing to a given item, title, description and a close button.
+CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(entryId, pageId, handwrittenText, authorMap UNINDEXED, wordStrokes UNINDEXED, digitalText, title, tags, type, tokenize="unicode61 categories 'L* M* N* Cf Co P* S*'");
+Excess found writing body: excess = %zu, size = %ld, maxdownload = %ld, bytecount = %ld
+FETCH %s BODY[%s]
+FETCH %s BODY[%s]<%s>
+FN5scene14ParagraphStyleERK10QTextBlockE
+FPDFBookmark_GetTitle
+Format as title, subheading, body, list, or checkboxes.
+HTTP 1.0, assume close after body
+INSERT INTO search (entryId, title, tags, type) VALUES (:entryId, :title, :tags, :type)
+Ignore %ld bytes of response-body
+Ignore chunked response-body
+Ignoring the response-body
+Input field with predefined typography and color
+N13TextFormatter7HeadingE
+N3pT
+NOBODY
+Oa~9px
+PFN5scene14ParagraphStyleERK10QTextBlockE
+ParagraphStyle
+SELECT entryId, pageId, wordStrokes, locate_matching_tokens(search, :hwColumn, :typedColumn, :titleColumn, :tagsColumn), authorMap, type FROM search WHERE search MATCH :ftsQuery 
+Subheading
+Subheading2
+Subheading2Style
+SubheadingStyle
+T3pX
+Text styled as title
+Text styled with component text style (typography and color)
+Text styled with typography tokens
+This is a base for all typography components and should not be used directly
+Title
+TitleStyle
+Typography {
+UID FETCH %s BODY[%s]
+UID FETCH %s BODY[%s]<%s>
+VerbatimError{{title: {}, body: {}}}
+WindowTitleChange
+[%d] cf_body_send last CHUNK -> %zd, %d, eos=%d
+[%d] cf_body_send(len=%zu) -> %zd, %d, eos=%d
+[%d] error after response headers, but we did not want a body anyway, ignore: %s (err %u)
+[%d] req_body_read(len=%zu) eos=%d -> %zd, %d
+\image html client-Typography.qml.png Client
+\image html client-Typography.qml.png client
+\image html paperTablet-Typography.qml.png paperTablet
+_ZN9QHttpPart13setBodyDeviceEP9QIODevice
+_ZN9QHttpPart7setBodyERK10QByteArray
+_ZNK5QFont9pointSizeEv
+a2Ptb
+agenda_title
+attendees_title
+auto-ending mail body with '\r\n.\r\n'
+body
+bodyFromTask
+cloud error body has unknown 'type' url: {}
+cloud error body lacks 'id' part of 'type' url: {}
+cloud error body missing 'type'
+crdt::TextProperties::FontSize
+cycleParagraphStyle
+download_write body(type=%x, blen=%zu) -> %d
+download_write body(type=%x, blen=%zu), did not want a BODY
+font-size:\s*(\d+)(%)(?:;|\s)
+fontSize
+g4Px
+heading
+http_chunked, write %zu body bytes, %ld bytes in chunk remain
+initalParagraphStyle
+invalid json: 'title' {}
+invalid json: missing required 'title'
+json parse error in cloud error body: {}
+kkk9PXNM
+lineHeight
+loaded CSS in %.3fms, line-height=%d, em=%d, fontSize=%d, pt=%d, justify=%d
+mail body complete, returning EOS
+notes_title
+paragraphStyle
+paragraphStyleChanged
+parseErrorBody
+scene::ParagraphStyle
+scene::ParagraphStyle::Type
+setLineHeight
+setParagraphStyle
+setParagraphStyle: no document focused
+skipTitle
+skipTitleChanged
+std::optional<scene::ParagraphStyle>
+textAnchorLineHeight
+textAnchorLineHeightChanged
+textLineHeight
+textLineHeightChanged
+textParagraphStyle
+textParagraphStyleChanged
+title
+titleForTool
+uK0Px
+with title
