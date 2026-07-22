@@ -93,6 +93,12 @@ def main() -> int:
         default=None,
         help="HEADING HTML top nudge CSS px (+ lowers text)",
     )
+    ap.add_argument(
+        "--text-dx",
+        type=float,
+        default=None,
+        help="all typed HTML left nudge CSS px (− left)",
+    )
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
@@ -128,6 +134,8 @@ def main() -> int:
         inmkl.TEXT_NUDGE_DY_BOLD1_CSS = args.l2_text_dy
     if args.l1_text_dy is not None:
         inmkl.TEXT_NUDGE_DY_HEADING_CSS = args.l1_text_dy
+    if args.text_dx is not None:
+        inmkl.TEXT_NUDGE_DX_CSS = args.text_dx
     if args.ink_dx is not None:
         d = args.ink_dx
         inmkl.INK_EXTRA_DX_CSS = d
