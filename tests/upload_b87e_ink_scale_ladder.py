@@ -19,10 +19,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 UPLOAD = ROOT / "upload_b87e_onenote.py"
 
-# locked H32 ladder
-H, B1, B2, P = 32.0, 24.0, 18.5, 16.0
+# locked after H32-inkS-2of6 + L2→23
+H, B1, B2, P = 32.0, 23.0, 18.5, 16.0
 # current lock first, then smaller (ink too large)
-SCALES = (1.6356, 1.55, 1.45, 1.35, 1.25, 1.15)
+SCALES = (1.55, 1.45, 1.35, 1.25, 1.15)
 
 
 def main() -> int:

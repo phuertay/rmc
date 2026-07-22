@@ -56,7 +56,7 @@ RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # Ink-only size vs HTML type. One page-wide scale (handwriting must match).
 # step1-calibS 20260721-230817: L1 mid 3↔4, L2 mid 2↔3 → page S = avg.
-INK_SCALE = 1.6356  # mean of per-line fine-ladder picks (L1:1.66 L2:1.5875 L3:1.61 L4:1.685)
+INK_SCALE = 1.55  # b87e-H32-inkS-2of6
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -283,10 +283,9 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # VF: fonts absorb per-line inkS picks (page-wide S locked).
-    # Prior 33.5/25/19.5/16.5 scaled so H=32, snapped to 0.5pt.
+    # H32 ladder; L2 (first BOLD) → 23 from H32-inkS pick.
     si.ParagraphStyle.HEADING: 32.0,
-    si.ParagraphStyle.BOLD: 24.0,
+    si.ParagraphStyle.BOLD: 23.0,
     si.ParagraphStyle.PLAIN: 16.0,
     si.ParagraphStyle.BULLET: 16.0,
     si.ParagraphStyle.BULLET2: 16.0,

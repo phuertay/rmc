@@ -101,7 +101,7 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "32pt" in html and "24pt" in html and "18.5pt" in html and "16pt" in html, html
+    assert "32pt" in html and "23pt" in html and "18.5pt" in html and "16pt" in html, html
     # OneNote max font precision is 0.5pt — emit path must snap.
     from rmc.exporters.inmkl import _snap_pt
 
