@@ -103,14 +103,14 @@ def main() -> None:
         assert s in html, s
     assert "38.86pt" in html and "27.43pt" in html and "18pt" in html and "16pt" in html, html
     assert "position:absolute" in html
-    # Exact device faces (Style.qml / RCC): Serif Small L1/L2; Sans L3/L4
-    assert html.count("reMarkable Serif Small") >= 2
-    assert html.count("reMarkable Sans") >= 2
+    # Installed Windows names (webui VF); Style.qml uses Serif Small / Sans.
+    assert html.count("reMarkable Serif VF") >= 2
+    assert html.count("reMarkable Sans VF") >= 2
     assert "This would be the third" in html
     third = html.split("This would be the third")[0].rsplit("font-family:", 1)[-1]
-    assert third.startswith("reMarkable Sans"), third[:60]
+    assert third.startswith("reMarkable Sans VF"), third[:60]
     second = html.split("Then this is the second")[0].rsplit("font-family:", 1)[-1]
-    assert second.startswith("reMarkable Serif Small"), second[:60]
+    assert second.startswith("reMarkable Serif VF"), second[:60]
 
     print(
         f"ok b87e: 4 lines + {len(boxes)} boxes; "

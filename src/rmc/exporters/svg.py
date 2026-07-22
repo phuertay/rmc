@@ -261,13 +261,13 @@ def draw_text(text: si.Text, output):
     output.write('''
             <style>
                 text.heading {
-                    font: 20pt "reMarkable Serif Small", serif;
+                    font: 20pt "reMarkable Serif VF", "reMarkable Serif Small", serif;
                 }
                 text.bold {
-                    font: 11pt "reMarkable Serif Small", serif;
+                    font: 11pt "reMarkable Serif VF", "reMarkable Serif Small", serif;
                 }
                 text, text.plain {
-                    font: 8pt "reMarkable Sans", sans-serif;
+                    font: 8pt "reMarkable Sans VF", "reMarkable Sans", sans-serif;
                 }
             </style>
 ''')
