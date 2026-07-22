@@ -305,6 +305,8 @@ def html_text_origin_css(
         style == si.ParagraphStyle.BOLD and bold_ordinal > 1
     ):
         top += TEXT_NUDGE_DY_L34_CSS
+    if style == si.ParagraphStyle.BOLD and bold_ordinal > 1:
+        top += TEXT_NUDGE_DY_L3_CSS
     if style == si.ParagraphStyle.PLAIN:
         top += TEXT_NUDGE_DY_L4_CSS
     if style == si.ParagraphStyle.HEADING or first_bold:
@@ -346,13 +348,13 @@ FONT_SIZE_PT = {
     si.ParagraphStyle.CHECKBOX_CHECKED: 16.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 18.5
+FONT_SIZE_SECOND_BOLD = 17.5  # L3 size retune
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
 TEXT_ASCENT_RATIO = 0.35
 # First-BOLD only: +CSS px lowers HTML text (L2 was high vs ink after H32/S1.55).
-TEXT_NUDGE_DY_BOLD1_CSS = 6  # base; fine L2-down ladder next
+TEXT_NUDGE_DY_BOLD1_CSS = 8  # b87e-L2down-2of6
 TEXT_NUDGE_DY_HEADING_CSS = -2  # b87e-L1L4up-2of6
 # All typed HTML: +CSS px (negative = left / up).
 TEXT_NUDGE_DX_CSS = -60  # b87e_textDX-60
@@ -361,6 +363,8 @@ TEXT_NUDGE_DY_CSS = -28  # b87e-textDY-5of6
 TEXT_NUDGE_DY_L234_CSS = 30  # b87e-L234dy-4of6
 # L3–L4 only: extra +CSS px (more space below L2).
 TEXT_NUDGE_DY_L34_CSS = 15  # b87e-L34dy-3of6
+# L3 only: extra +CSS px (calibrate after 17.5pt).
+TEXT_NUDGE_DY_L3_CSS = 0
 # L4 only: extra +CSS px.
 TEXT_NUDGE_DY_L4_CSS = 23  # L4dy-6of6 (25) + L1L4up-2of6 (−2)
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
