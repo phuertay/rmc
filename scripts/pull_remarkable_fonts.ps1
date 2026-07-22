@@ -28,7 +28,7 @@ param(
     [string]$LocalBinary = ''  # carve TTFs from this xochitl; skip SSH if set alone
 )
 $ErrorActionPreference = 'Stop'
-$ScriptRev = '2026-07-22-fonts-zip-v3'
+$ScriptRev = '2026-07-22-fonts-zip-v4'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -110,6 +110,7 @@ if (-not [System.IO.Path]::IsPathRooted($OutRoot)) {
 }
 
 $CarvePy = Join-Path $ScriptDir 'carve_remarkable_fonts.py'
+$WoffPy = Join-Path $ScriptDir 'woff2_to_ttf.py'
 
 $Meta = Join-Path $OutRoot 'meta'
 $Fonts = Join-Path $OutRoot 'fonts'
@@ -119,21 +120,70 @@ $FcOut = Join-Path $OutRoot 'fontconfig\etc-fonts'
 $Bin = Join-Path $OutRoot 'bin'
 New-Item -ItemType Directory -Force -Path $Meta, $Fonts, $FcOut, $Bin | Out-Null
 
+function Get-PythonCmd {
+    foreach ($n in @('python', 'python3', 'py')) {
+        $c = Get-Command $n -ErrorAction SilentlyContinue
+        if ($c) { return $c.Source }
+    }
+    return $null
+}
+
 function Invoke-CarveXochitl {
     param([Parameter(Mandatory)][string]$BinaryPath)
     if (-not (Test-Path -LiteralPath $CarvePy)) {
         Write-Warning "missing $CarvePy"
         return
     }
-    $py = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $py) { $py = Get-Command python3 -ErrorAction SilentlyContinue }
+    $py = Get-PythonCmd
     if (-not $py) {
         Write-Warning "python not on PATH; skip RCC font carve"
         return
     }
     New-Item -ItemType Directory -Force -Path $Carved | Out-Null
     Write-Host "carve reMarkable*.ttf from $BinaryPath ..."
-    & $py.Source $CarvePy --binary $BinaryPath --out $Carved
+    & $py $CarvePy --binary $BinaryPath --out $Carved
+}
+
+function Ensure-FontTools {
+    $py = Get-PythonCmd
+    if (-not $py) { return $null }
+    & $py -c "import fontTools, brotli" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "pip install fonttools brotli (woff2→ttf)..."
+        & $py -m pip install --user fonttools brotli
+        & $py -c "import fontTools, brotli" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "fonttools/brotli missing; cannot convert woff2"
+            return $null
+        }
+    }
+    return $py
+}
+
+function Convert-Woff2InTree {
+    param([Parameter(Mandatory)][string]$FontsRoot)
+    $py = Ensure-FontTools
+    if (-not $py) { return @() }
+    if (-not (Test-Path -LiteralPath $WoffPy)) {
+        Write-Warning "missing $WoffPy"
+        return @()
+    }
+    $convertedDir = Join-Path $FontsRoot 'converted_woff2'
+    New-Item -ItemType Directory -Force -Path $convertedDir | Out-Null
+    $out = @()
+    $woffs = @(Get-ChildItem -LiteralPath $FontsRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -eq '.woff2' -or $_.Extension -eq '.woff' })
+    foreach ($w in $woffs) {
+        $dst = Join-Path $convertedDir ($w.BaseName + '.ttf')
+        Write-Host ("  woff2→ttf {0}" -f $w.Name)
+        & $py $WoffPy $w.FullName $dst
+        if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $dst)) {
+            $out += Get-Item -LiteralPath $dst
+        } else {
+            Write-Warning "convert failed: $($w.FullName)"
+        }
+    }
+    return $out
 }
 
 if ($LocalOnly) {
@@ -260,7 +310,10 @@ if (Test-Path $Fonts) {
 
 # --- Pick notebook faces only → remarkable_onenote_fonts.zip ---
 # Needed for OneNote CSS: reMarkable Serif Small (L1/L2) + reMarkable Sans (L3+).
-# (plain arrays only — Generic.List[object] blows up on some PS builds)
+# Convert any .woff2 → .ttf first (Windows cannot install woff2).
+Write-Host "convert woff2 → ttf (if any)..."
+$null = Convert-Woff2InTree -FontsRoot $Fonts
+
 $ZipPath = Join-Path $OutRoot 'remarkable_onenote_fonts.zip'
 $Stage = Join-Path $OutRoot 'share_fonts'
 if (Test-Path -LiteralPath $Stage) { Remove-Item -LiteralPath $Stage -Recurse -Force }
@@ -271,19 +324,16 @@ if (Test-Path -LiteralPath $Fonts) {
     $allFontFiles = @(Get-ChildItem -LiteralPath $Fonts -Recurse -File -ErrorAction SilentlyContinue)
 }
 $serifTtf = @($allFontFiles | Where-Object {
-    $_.Name -like 'reMarkableSerifSmall*' -and ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
+    ($_.Name -like 'reMarkableSerifSmall*' -or $_.Name -like 'reMarkableSerif.*' -or $_.Name -eq 'reMarkableSerif.ttf') -and
+    ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
 })
 $sansTtf = @($allFontFiles | Where-Object {
-    $_.Name -like 'reMarkableSans*' -and ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
+    ($_.Name -like 'reMarkableSans*' ) -and
+    ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
 })
 $needed = @($serifTtf + $sansTtf)
-if ($serifTtf.Count -eq 0) {
-    $needed += @($allFontFiles | Where-Object { $_.Name -eq 'reMarkableSerif.woff2' })
-}
-if ($sansTtf.Count -eq 0) {
-    $needed += @($allFontFiles | Where-Object { $_.Name -eq 'reMarkableSans.woff2' })
-}
-# de-dupe by name
+# de-dupe by name (prefer carved paths: sort so carved_from_xochitl first)
+$needed = @($needed | Sort-Object { if ($_.FullName -match 'carved') { 0 } else { 1 } }, Name)
 $seen = @{}
 $needed = @($needed | Where-Object {
     if (-not $_ -or $seen.ContainsKey($_.Name)) { return $false }
@@ -292,7 +342,7 @@ $needed = @($needed | Where-Object {
 })
 
 if ($needed.Count -eq 0) {
-    Write-Warning "no reMarkable Serif Small / Sans fonts found under $Fonts — zip skipped"
+    Write-Warning "no reMarkable Serif / Sans ttf/otf found under $Fonts — zip skipped"
     Write-Host "names present:"
     $allFontFiles | Select-Object -First 40 Name | ForEach-Object { Write-Host ("  " + $_.Name) }
 } else {
@@ -300,6 +350,7 @@ if ($needed.Count -eq 0) {
         "remarkable_onenote_fonts  rev=$ScriptRev"
         "Install on Windows: select *.ttf/*.otf → right-click → Install for all users."
         "OneNote CSS expects families: 'reMarkable Serif Small' and 'reMarkable Sans'."
+        "woff2 were converted to ttf when present (Windows cannot install woff2)."
         "Do not commit this zip to a public repo (proprietary)."
         ""
     )

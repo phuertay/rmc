@@ -34,7 +34,7 @@ $Work = Join-Path $env:TEMP ("rm_fonts_pull_" + [guid]::NewGuid().ToString('N').
 New-Item -ItemType Directory -Force -Path $Work, $OutDir | Out-Null
 
 Write-Host "branch=$Branch  work=$Work  out=$OutDir"
-foreach ($name in @('pull_remarkable_fonts.ps1', 'carve_remarkable_fonts.py')) {
+foreach ($name in @('pull_remarkable_fonts.ps1', 'carve_remarkable_fonts.py', 'woff2_to_ttf.py')) {
     $url = "$Base/$name"
     $dest = Join-Path $Work $name
     Write-Host "get $url"
