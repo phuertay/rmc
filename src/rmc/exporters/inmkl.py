@@ -284,9 +284,10 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
 FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
 FONT_SIZE_PT = {
-    # Desktop lock (b87e step2): L1/L2 vs ink boxes; L3/L4 vs PDF glyph scale.
-    si.ParagraphStyle.HEADING: 38.5,
-    si.ParagraphStyle.BOLD: 27.5,
+    # Style map B (ark Style.qml): title.xl:title.lg:body.md = 68:48:28,
+    # scaled so PLAIN=16 → 38.86 / 27.43. BOLD#2 kept empirical (no Style twin).
+    si.ParagraphStyle.HEADING: 38.86,  # 68/28*16
+    si.ParagraphStyle.BOLD: 27.43,  # 48/28*16
     si.ParagraphStyle.PLAIN: 16.0,
     si.ParagraphStyle.BULLET: 16.0,
     si.ParagraphStyle.BULLET2: 16.0,
@@ -294,7 +295,7 @@ FONT_SIZE_PT = {
     si.ParagraphStyle.CHECKBOX_CHECKED: 16.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 18.0
+FONT_SIZE_SECOND_BOLD = 18.0  # no Style twin; keep ink/PDF fit
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
