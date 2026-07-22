@@ -284,17 +284,17 @@ FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
     # VF: fonts absorb per-line inkS picks (page-wide S locked).
-    # F' = F * S_lock / S_pref, then snapped to 0.5pt (OneNote max precision).
-    si.ParagraphStyle.HEADING: 33.5,
-    si.ParagraphStyle.BOLD: 25.0,
-    si.ParagraphStyle.PLAIN: 16.5,
-    si.ParagraphStyle.BULLET: 16.5,
-    si.ParagraphStyle.BULLET2: 16.5,
-    si.ParagraphStyle.CHECKBOX: 16.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 16.5,
+    # Prior 33.5/25/19.5/16.5 scaled so H=32, snapped to 0.5pt.
+    si.ParagraphStyle.HEADING: 32.0,
+    si.ParagraphStyle.BOLD: 24.0,
+    si.ParagraphStyle.PLAIN: 16.0,
+    si.ParagraphStyle.BULLET: 16.0,
+    si.ParagraphStyle.BULLET2: 16.0,
+    si.ParagraphStyle.CHECKBOX: 16.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 16.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 19.5
+FONT_SIZE_SECOND_BOLD = 18.5
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
