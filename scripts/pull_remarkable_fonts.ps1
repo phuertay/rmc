@@ -9,7 +9,8 @@
 # Already have xochitl (fonts often live only in RCC, not /usr/share/fonts):
 #   .\scripts\pull_remarkable_fonts.ps1 -LocalBinary C:\path\to\xochitl
 #
-# OneNote CSS: "reMarkable Serif Small" / "reMarkable Sans". Do NOT commit fonts.
+# OneNote CSS: "reMarkable Serif VF" / "reMarkable Sans VF" (installed Name table).
+# Style.qml labels differ (Serif Small / Sans). Do NOT commit fonts.
 #
 # Auth (pick one):
 #   $env:RM_PASS already set   # non-interactive (needs PuTTY plink/pscp on PATH)
@@ -356,7 +357,8 @@ $copied = 0
 $lines = @(
     "install_me  rev=$ScriptRev"
     "Select all *.ttf → right-click → Install for all users."
-    "OneNote CSS expects: 'reMarkable Serif Small' and 'reMarkable Sans'."
+    "OneNote CSS expects: 'reMarkable Serif VF' and 'reMarkable Sans VF'."
+    "(Style.qml says Serif Small / Sans; Windows Name table from webui is VF.)"
     ""
 )
 foreach ($f in $needed) {
