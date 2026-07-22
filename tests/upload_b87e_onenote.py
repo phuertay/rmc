@@ -81,6 +81,12 @@ def main() -> int:
         default=None,
         help="first-BOLD HTML top nudge CSS px (+ lowers text)",
     )
+    ap.add_argument(
+        "--ink-dx",
+        type=float,
+        default=None,
+        help="page-wide ink DX CSS px for all styles (− left)",
+    )
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
@@ -114,6 +120,14 @@ def main() -> int:
         inmkl.FONT_SIZE_SECOND_BOLD = args.second_bold
     if args.l2_text_dy is not None:
         inmkl.TEXT_NUDGE_DY_BOLD1_CSS = args.l2_text_dy
+    if args.ink_dx is not None:
+        d = args.ink_dx
+        inmkl.INK_EXTRA_DX_CSS = d
+        inmkl.INK_EXTRA_DX_HEADING_CSS = d
+        inmkl.INK_EXTRA_DX_BOLD_CSS = d
+        inmkl.INK_EXTRA_DX_SECOND_BOLD_CSS = d
+        inmkl.INK_EXTRA_DX_PLAIN_CSS = d
+        inmkl.INK_EXTRA_DX = round(d / inmkl.CSS_PER_HIMETRIC)
 
     h = inmkl.FONT_SIZE_PT[si.ParagraphStyle.HEADING]
     b = inmkl.FONT_SIZE_PT[si.ParagraphStyle.BOLD]
@@ -122,7 +136,8 @@ def main() -> int:
     sizes = f"{h:g}/{b:g}/{b2:g}/{p:g}"
     S = inmkl.INK_SCALE
     l2dy = inmkl.TEXT_NUDGE_DY_BOLD1_CSS
-    title = args.title or f"{args.tag} S{S:g} fonts {sizes} L2dy{l2dy:g}"
+    dx = inmkl.INK_EXTRA_DX_HEADING_CSS
+    title = args.title or f"{args.tag} S{S:g} fonts {sizes} L2dy{l2dy:g} inkDX{dx:g}"
 
     with RM.open("rb") as f:
         tree = read_tree(f)

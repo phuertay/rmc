@@ -300,7 +300,7 @@ ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
 TEXT_ASCENT_RATIO = 0.35
 # First-BOLD only: +CSS px lowers HTML text (L2 was high vs ink after H32/S1.55).
-TEXT_NUDGE_DY_BOLD1_CSS = 0
+TEXT_NUDGE_DY_BOLD1_CSS = 6  # b87e-L2dy-4of5
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
