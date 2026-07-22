@@ -1,0 +1,54 @@
+/etc/fonts:
+drwxr-xr-x    3 root     root          1024 Jun 12 08:58 .
+drwxr-xr-x    1 root     root           180 Jul 17 23:24 ..
+drwxr-xr-x    2 root     root          1024 Jun 12 08:58 conf.d
+-rw-r--r--    1 root     root          2664 Jun 12 08:58 fonts.conf
+
+/usr/share/fontconfig:
+drwxr-xr-x    3 root     root          1024 Jun 12 08:58 .
+drwxr-xr-x   30 root     root          1024 Jun 12 08:58 ..
+drwxr-xr-x    2 root     root          3072 Jun 12 08:58 conf.avail
+/etc/fonts/fonts.conf
+/etc/fonts/conf.d/README
+/etc/fonts/conf.d/98-xochitl.conf
+/usr/share/fontconfig/conf.avail/45-latin.conf
+/usr/share/fontconfig/conf.avail/09-autohint-if-no-hinting.conf
+/usr/share/fontconfig/conf.avail/10-sub-pixel-vbgr.conf
+/usr/share/fontconfig/conf.avail/70-yes-bitmaps.conf
+/usr/share/fontconfig/conf.avail/10-sub-pixel-none.conf
+/usr/share/fontconfig/conf.avail/10-unhinted.conf
+/usr/share/fontconfig/conf.avail/48-spacing.conf
+/usr/share/fontconfig/conf.avail/05-reset-dirs-sample.conf
+/usr/share/fontconfig/conf.avail/11-lcdfilter-none.conf
+/usr/share/fontconfig/conf.avail/40-nonlatin.conf
+/usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf
+/usr/share/fontconfig/conf.avail/60-generic.conf
+/usr/share/fontconfig/conf.avail/65-fonts-persian.conf
+/usr/share/fontconfig/conf.avail/20-unhint-small-vera.conf
+/usr/share/fontconfig/conf.avail/10-yes-antialias.conf
+/usr/share/fontconfig/conf.avail/25-unhint-nonlatin.conf
+/usr/share/fontconfig/conf.avail/11-lcdfilter-legacy.conf
+/usr/share/fontconfig/conf.avail/10-hinting-slight.conf
+/usr/share/fontconfig/conf.avail/70-no-bitmaps.conf
+/usr/share/fontconfig/conf.avail/80-delicious.conf
+/usr/share/fontconfig/conf.avail/51-local.conf
+/usr/share/fontconfig/conf.avail/60-latin.conf
+/usr/share/fontconfig/conf.avail/10-scale-bitmap-fonts.conf
+/usr/share/fontconfig/conf.avail/69-unifont.conf
+/usr/share/fontconfig/conf.avail/10-autohint.conf
+/usr/share/fontconfig/conf.avail/35-lang-normalize.conf
+/usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf
+/usr/share/fontconfig/conf.avail/45-generic.conf
+/usr/share/fontconfig/conf.avail/90-synthetic.conf
+/usr/share/fontconfig/conf.avail/30-metric-aliases.conf
+/usr/share/fontconfig/conf.avail/10-no-antialias.conf
+/usr/share/fontconfig/conf.avail/11-lcdfilter-light.conf
+/usr/share/fontconfig/conf.avail/65-nonlatin.conf
+/usr/share/fontconfig/conf.avail/10-hinting-full.conf
+/usr/share/fontconfig/conf.avail/50-user.conf
+/usr/share/fontconfig/conf.avail/65-khmer.conf
+/usr/share/fontconfig/conf.avail/49-sansserif.conf
+/usr/share/fontconfig/conf.avail/10-hinting-medium.conf
+/usr/share/fontconfig/conf.avail/10-sub-pixel-bgr.conf
+/usr/share/fontconfig/conf.avail/10-sub-pixel-vrgb.conf
+/usr/share/fontconfig/conf.avail/10-hinting-none.conf

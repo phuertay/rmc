@@ -1,0 +1,15 @@
+/usr/share/fonts/ttf/noto/NotoSerif-BoldItalic.ttf
+/usr/share/fonts/ttf/noto/NotoSans-Italic.ttf
+/usr/share/fonts/ttf/noto/NotoSans-Regular.ttf
+/usr/share/fonts/ttf/noto/NotoSerif-Regular.ttf
+/usr/share/fonts/ttf/noto/NotoSerif-Bold.ttf
+/usr/share/fonts/ttf/noto/NotoSans-Bold.ttf
+/usr/share/fonts/ttf/noto/NotoSansUI-Regular.ttf
+/usr/share/fonts/ttf/noto/NotoSans-BoldItalic.ttf
+/usr/share/fonts/ttf/noto/NotoSansUI-Italic.ttf
+/usr/share/fonts/ttf/noto/NotoSansUI-Bold.ttf
+/usr/share/fonts/ttf/noto/NotoMono-Regular.ttf
+/usr/share/fonts/ttf/noto/NotoSerif-Italic.ttf
+/usr/share/fonts/ttf/noto/NotoSansUI-BoldItalic.ttf
+/usr/share/fonts/ttf/ebgaramond/EBGaramond-Italic-VariableFont_wght.ttf
+/usr/share/fonts/ttf/ebgaramond/EBGaramond-VariableFont_wght.ttf
