@@ -258,13 +258,14 @@ def html_text_origin_css(
     partial ascent so ink is not above the glyphs (bd4c554f / b87e L2raise-3).
     """
     left, top = rm_to_css(rm_x, rm_y)
-    if style == si.ParagraphStyle.HEADING or (
-        style == si.ParagraphStyle.BOLD and bold_ordinal == 1
-    ):
+    first_bold = style == si.ParagraphStyle.BOLD and bold_ordinal == 1
+    if style == si.ParagraphStyle.HEADING or first_bold:
         top -= ONENOTE_P_MARGIN_PX
         # Real serif face: box still low vs title — lower text (+8 vs prior +2).
         # ponytail: leave global ink (al_medio OK on desktop).
         top -= round(rm_font_size_css(style, bold_ordinal=bold_ordinal) * TEXT_ASCENT_RATIO) - 8
+        if first_bold:
+            top += TEXT_NUDGE_DY_BOLD1_CSS
     return left, float(round(top))
 
 
@@ -296,8 +297,10 @@ FONT_SIZE_PT = {
 FONT_SIZE_SECOND_BOLD = 18.5
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
-# Partial ascent for HEADING only (0.8 overshot above the ink box).
+# Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
 TEXT_ASCENT_RATIO = 0.35
+# First-BOLD only: +CSS px lowers HTML text (L2 was high vs ink after H32/S1.55).
+TEXT_NUDGE_DY_BOLD1_CSS = 0
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2

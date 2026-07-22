@@ -75,6 +75,12 @@ def main() -> int:
     ap.add_argument("--second-bold", type=float, default=None)
     ap.add_argument("--plain", type=float, default=None)
     ap.add_argument("--ink-scale", type=float, default=None, help="page-wide INK_SCALE")
+    ap.add_argument(
+        "--l2-text-dy",
+        type=float,
+        default=None,
+        help="first-BOLD HTML top nudge CSS px (+ lowers text)",
+    )
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
@@ -106,6 +112,8 @@ def main() -> int:
             inmkl.FONT_SIZE_PT[st] = args.plain
     if args.second_bold is not None:
         inmkl.FONT_SIZE_SECOND_BOLD = args.second_bold
+    if args.l2_text_dy is not None:
+        inmkl.TEXT_NUDGE_DY_BOLD1_CSS = args.l2_text_dy
 
     h = inmkl.FONT_SIZE_PT[si.ParagraphStyle.HEADING]
     b = inmkl.FONT_SIZE_PT[si.ParagraphStyle.BOLD]
@@ -113,7 +121,8 @@ def main() -> int:
     p = inmkl.FONT_SIZE_PT[si.ParagraphStyle.PLAIN]
     sizes = f"{h:g}/{b:g}/{b2:g}/{p:g}"
     S = inmkl.INK_SCALE
-    title = args.title or f"{args.tag} S{S:g} fonts {sizes}"
+    l2dy = inmkl.TEXT_NUDGE_DY_BOLD1_CSS
+    title = args.title or f"{args.tag} S{S:g} fonts {sizes} L2dy{l2dy:g}"
 
     with RM.open("rb") as f:
         tree = read_tree(f)
