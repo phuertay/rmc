@@ -35,6 +35,7 @@ def main() -> int:
     ap.add_argument("--bold", type=float, default=None)
     ap.add_argument("--second-bold", type=float, default=None)
     ap.add_argument("--plain", type=float, default=None)
+    ap.add_argument("--ink-scale", type=float, default=None, help="page-wide INK_SCALE")
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
@@ -45,6 +46,10 @@ def main() -> int:
         print("need ONENOTE_TOKEN and ONENOTE_SECTION", file=sys.stderr)
         return 1
 
+    if args.ink_scale is not None:
+        inmkl.INK_SCALE = args.ink_scale
+        inmkl.WIDTH_CONV_CONSTANT = inmkl.RM_PER_INK * args.ink_scale
+        inmkl.HEIGHT_CONV_CONSTANT = inmkl.RM_PER_INK * args.ink_scale
     if args.heading is not None:
         inmkl.FONT_SIZE_PT[si.ParagraphStyle.HEADING] = args.heading
     if args.bold is not None:
@@ -66,7 +71,8 @@ def main() -> int:
     b2 = inmkl.FONT_SIZE_SECOND_BOLD
     p = inmkl.FONT_SIZE_PT[si.ParagraphStyle.PLAIN]
     sizes = f"{h:g}/{b:g}/{b2:g}/{p:g}"
-    title = args.title or f"{args.tag} fonts {sizes}"
+    S = inmkl.INK_SCALE
+    title = args.title or f"{args.tag} S{S:g} fonts {sizes}"
 
     with RM.open("rb") as f:
         tree = read_tree(f)
