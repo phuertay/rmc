@@ -8,9 +8,8 @@
 # Already have xochitl locally (skip SSH):
 #   .\scripts\pull_remarkable_ark_tokens.ps1 -LocalBinary C:\Users\phuer\tmp\ark_tokens\bin\xochitl -OutDir C:\Users\phuer\tmp\ark_tokens
 #
-# Writes ark_tokens_share.zip (meta/ + extracted/, never bin/). Upload that zip.
-# Local (need bin/xochitl + python): carve_ark_tokens.py + extract_qt_rcc.py.
-# Needs: PuTTY plink/pscp (if password), Python 3 on PATH.
+# Writes share/ + ark_tokens_share.zip (meta + text RCC dumps only; never bin/).
+# Upload ark_tokens_share.zip. LocalBinary skips SSH if xochitl already on disk.
 #Requires -Version 5.1
 [CmdletBinding()]
 param(
@@ -175,17 +174,80 @@ if ((Test-Path $xoLocal) -and $Py) {
 }
 
 Write-Host "done -> $OutRoot"
-Get-ChildItem $Meta | Select-Object Name, Length
-if (Test-Path $Ext) { Get-ChildItem $Ext -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize }
-
-# Zip only small text dumps — never bin/xochitl.
-$ZipPath = Join-Path $OutRoot 'ark_tokens_share.zip'
-$toZip = @($Meta)
-if ((Test-Path $Ext) -and @(Get-ChildItem $Ext -Recurse -File -ErrorAction SilentlyContinue).Count -gt 0) {
-    $toZip += $Ext
+Get-ChildItem $Meta -ErrorAction SilentlyContinue | Select-Object Name, Length
+if (Test-Path (Join-Path $Ext 'rcc\SUMMARY.txt')) {
+    Get-Content (Join-Path $Ext 'rcc\SUMMARY.txt') | Out-Host
 }
+
+# --- Build slim share/ (only what cloud agent needs) + zip ---
+# Never include bin/xochitl. Skip images/fonts/binaries from RCC trees.
+$Share = Join-Path $OutRoot 'share'
+$ZipPath = Join-Path $OutRoot 'ark_tokens_share.zip'
+if (Test-Path $Share) { Remove-Item -Recurse -Force $Share }
+New-Item -ItemType Directory -Force -Path $Share | Out-Null
+
+function Copy-ShareFile {
+    param([string]$Src, [string]$RelDest)
+    if (-not (Test-Path -LiteralPath $Src)) { return }
+    $dest = Join-Path $Share $RelDest
+    New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
+    Copy-Item -LiteralPath $Src -Destination $dest -Force
+}
+
+# Always: remote/local meta logs
+if (Test-Path $Meta) {
+    Get-ChildItem $Meta -File | ForEach-Object {
+        Copy-ShareFile $_.FullName ("meta\" + $_.Name)
+    }
+}
+
+# Carve text dumps (top of extracted/)
+foreach ($name in @(
+    'token-strings.txt', 'fontsize-lines.txt', 'fontsize-numbers.txt',
+    'qrc-ark-paths.txt', 'json_blobs_index.txt'
+)) {
+    Copy-ShareFile (Join-Path $Ext $name) ("extracted\" + $name)
+}
+Get-ChildItem $Ext -Filter 'json_blob_*.json' -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Copy-ShareFile $_.FullName ("extracted\" + $_.Name)
+}
+
+# RCC: summaries + text-like payloads only
+$Rcc = Join-Path $Ext 'rcc'
+if (Test-Path $Rcc) {
+    foreach ($name in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt')) {
+        Copy-ShareFile (Join-Path $Rcc $name) ("extracted\rcc\" + $name)
+    }
+    $textExt = @('.txt', '.json', '.qml', '.js', '.css', '.md', '.xml', '.html', '.qss', '.conf')
+    Get-ChildItem $Rcc -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+        $rel = $_.FullName.Substring($Rcc.Length).TrimStart('\', '/')
+        if ($_.Name -in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt')) { return }
+        if ($_.Length -gt 512KB) { return }
+        if ($textExt -notcontains $_.Extension.ToLowerInvariant() -and $_.Name -ne '_meta.txt') { return }
+        # skip obvious junk
+        if ($rel -match '(^|[/\\])(icons?|images?|img)([/\\]|$)') { return }
+        Copy-ShareFile $_.FullName ("extracted\rcc\" + $rel)
+    }
+}
+
+# Manifest
+$files = @(Get-ChildItem $Share -Recurse -File)
+@(
+    "ark_tokens share bundle"
+    "created=$(Get-Date -Format o)"
+    "file_count=$($files.Count)"
+    "total_bytes=$((($files | Measure-Object Length -Sum).Sum))"
+    ""
+    "UPLOAD this zip to the cloud agent. bin/xochitl is NOT included."
+    ""
+) + ($files | ForEach-Object { $_.FullName.Substring($Share.Length).TrimStart('\', '/') + "  $($_.Length)" }) |
+    Set-Content -Encoding utf8 (Join-Path $Share 'MANIFEST.txt')
+
 if (Test-Path $ZipPath) { Remove-Item -Force $ZipPath }
-Compress-Archive -Path $toZip -DestinationPath $ZipPath -Force
+# Compress share/* so zip root has meta/, extracted/, MANIFEST.txt
+Compress-Archive -Path (Join-Path $Share '*') -DestinationPath $ZipPath -Force
+
 Write-Host ""
-Write-Host "UPLOAD THIS ZIP (bin/ excluded): $ZipPath"
-Write-Host "size: $((Get-Item $ZipPath).Length) bytes"
+Write-Host "UPLOAD THIS ZIP: $ZipPath"
+Write-Host "size: $((Get-Item $ZipPath).Length) bytes  files: $($files.Count)"
+Write-Host "staging: $Share"
