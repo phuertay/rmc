@@ -283,18 +283,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # Style map B (ark Style.qml): title.xl:title.lg:body.md = 68:48:28,
-    # scaled so PLAIN=16 → 38.86 / 27.43. BOLD#2 kept empirical (no Style twin).
-    si.ParagraphStyle.HEADING: 38.86,  # 68/28*16
-    si.ParagraphStyle.BOLD: 27.43,  # 48/28*16
-    si.ParagraphStyle.PLAIN: 16.0,
-    si.ParagraphStyle.BULLET: 16.0,
-    si.ParagraphStyle.BULLET2: 16.0,
-    si.ParagraphStyle.CHECKBOX: 16.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 16.0,
+    # First-pass from b87e device PDF glyph heights × INK_SCALE (not Style UI
+    # 68:48:28). Ratios H:B1:B2:P ≈ 2.55:1.45:1.125:1. Absolute ladder next.
+    si.ParagraphStyle.HEADING: 30.98,
+    si.ParagraphStyle.BOLD: 17.68,
+    si.ParagraphStyle.PLAIN: 12.15,
+    si.ParagraphStyle.BULLET: 12.15,
+    si.ParagraphStyle.BULLET2: 12.15,
+    si.ParagraphStyle.CHECKBOX: 12.15,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 12.15,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 18.0  # no Style twin; keep ink/PDF fit
+FONT_SIZE_SECOND_BOLD = 13.67  # glyph L3 × INK_SCALE
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
