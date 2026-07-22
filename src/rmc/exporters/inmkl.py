@@ -352,9 +352,8 @@ ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
 TEXT_ASCENT_RATIO = 0.35
 # First-BOLD only: +CSS px lowers HTML text (L2 was high vs ink after H32/S1.55).
-TEXT_NUDGE_DY_BOLD1_CSS = 6  # b87e-L2dy-4of5
-# HEADING only: +CSS px lowers L1 text.
-TEXT_NUDGE_DY_HEADING_CSS = 0
+TEXT_NUDGE_DY_BOLD1_CSS = 6  # base; fine L2-down ladder next
+TEXT_NUDGE_DY_HEADING_CSS = -2  # b87e-L1L4up-2of6
 # All typed HTML: +CSS px (negative = left / up).
 TEXT_NUDGE_DX_CSS = -60  # b87e_textDX-60
 TEXT_NUDGE_DY_CSS = -28  # b87e-textDY-5of6
@@ -363,7 +362,7 @@ TEXT_NUDGE_DY_L234_CSS = 30  # b87e-L234dy-4of6
 # L3–L4 only: extra +CSS px (more space below L2).
 TEXT_NUDGE_DY_L34_CSS = 15  # b87e-L34dy-3of6
 # L4 only: extra +CSS px.
-TEXT_NUDGE_DY_L4_CSS = 25  # b87e-L4dy-6of6
+TEXT_NUDGE_DY_L4_CSS = 23  # L4dy-6of6 (25) + L1L4up-2of6 (−2)
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
