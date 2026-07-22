@@ -27,7 +27,7 @@ param(
     [string]$LocalBinary = ''  # carve TTFs from this xochitl; skip SSH if set alone
 )
 $ErrorActionPreference = 'Stop'
-$ScriptRev = '2026-07-22-fonts-zip'
+$ScriptRev = '2026-07-22-fonts-zip-v2'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -258,61 +258,55 @@ if (Test-Path $Fonts) {
 
 # --- Pick notebook faces only → remarkable_onenote_fonts.zip ---
 # Needed for OneNote CSS: reMarkable Serif Small (L1/L2) + reMarkable Sans (L3+).
-function Select-NeededRmFonts {
-    param([Parameter(Mandatory)][string]$FontsRoot)
-    $files = @(Get-ChildItem -LiteralPath $FontsRoot -Recurse -File -ErrorAction SilentlyContinue)
-    $serifTtf = @($files | Where-Object {
-        $_.Name -match '^reMarkableSerifSmall' -and $_.Extension -match '^\.(ttf|otf)$'
-    })
-    $sansTtf = @($files | Where-Object {
-        $_.Name -match '^reMarkableSans' -and $_.Extension -match '^\.(ttf|otf)$'
-    })
-    $picked = New-Object System.Collections.Generic.List[object]
-    foreach ($f in ($serifTtf + $sansTtf)) { [void]$picked.Add($f) }
-    # woff2 only if that family missing as ttf/otf
-    if ($serifTtf.Count -eq 0) {
-        foreach ($f in @($files | Where-Object { $_.Name -match '^reMarkableSerif(\.woff2)?$' -or $_.Name -eq 'reMarkableSerif.woff2' })) {
-            [void]$picked.Add($f)
-        }
-    }
-    if ($sansTtf.Count -eq 0) {
-        foreach ($f in @($files | Where-Object { $_.Name -eq 'reMarkableSans.woff2' })) {
-            [void]$picked.Add($f)
-        }
-    }
-    # de-dupe by file name (prefer first / carved)
-    $seen = @{}
-    $out = New-Object System.Collections.Generic.List[object]
-    foreach ($f in $picked) {
-        if ($seen.ContainsKey($f.Name)) { continue }
-        $seen[$f.Name] = $true
-        [void]$out.Add($f)
-    }
-    return @($out)
-}
-
+# (plain arrays only — Generic.List[object] blows up on some PS builds)
 $ZipPath = Join-Path $OutRoot 'remarkable_onenote_fonts.zip'
 $Stage = Join-Path $OutRoot 'share_fonts'
 if (Test-Path -LiteralPath $Stage) { Remove-Item -LiteralPath $Stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
-$needed = @(Select-NeededRmFonts -FontsRoot $Fonts)
+$allFontFiles = @()
+if (Test-Path -LiteralPath $Fonts) {
+    $allFontFiles = @(Get-ChildItem -LiteralPath $Fonts -Recurse -File -ErrorAction SilentlyContinue)
+}
+$serifTtf = @($allFontFiles | Where-Object {
+    $_.Name -like 'reMarkableSerifSmall*' -and ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
+})
+$sansTtf = @($allFontFiles | Where-Object {
+    $_.Name -like 'reMarkableSans*' -and ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
+})
+$needed = @($serifTtf + $sansTtf)
+if ($serifTtf.Count -eq 0) {
+    $needed += @($allFontFiles | Where-Object { $_.Name -eq 'reMarkableSerif.woff2' })
+}
+if ($sansTtf.Count -eq 0) {
+    $needed += @($allFontFiles | Where-Object { $_.Name -eq 'reMarkableSans.woff2' })
+}
+# de-dupe by name
+$seen = @{}
+$needed = @($needed | Where-Object {
+    if (-not $_ -or $seen.ContainsKey($_.Name)) { return $false }
+    $seen[$_.Name] = $true
+    $true
+})
+
 if ($needed.Count -eq 0) {
     Write-Warning "no reMarkable Serif Small / Sans fonts found under $Fonts — zip skipped"
+    Write-Host "names present:"
+    $allFontFiles | Select-Object -First 40 Name | ForEach-Object { Write-Host ("  " + $_.Name) }
 } else {
-    $manifest = New-Object System.Collections.Generic.List[string]
-    [void]$manifest.Add("remarkable_onenote_fonts  rev=$ScriptRev")
-    [void]$manifest.Add("Install on Windows: select *.ttf/*.otf → right-click → Install for all users.")
-    [void]$manifest.Add("OneNote CSS expects families: 'reMarkable Serif Small' and 'reMarkable Sans'.")
-    [void]$manifest.Add("Do not commit this zip to a public repo (proprietary).")
-    [void]$manifest.Add("")
+    $lines = @(
+        "remarkable_onenote_fonts  rev=$ScriptRev"
+        "Install on Windows: select *.ttf/*.otf → right-click → Install for all users."
+        "OneNote CSS expects families: 'reMarkable Serif Small' and 'reMarkable Sans'."
+        "Do not commit this zip to a public repo (proprietary)."
+        ""
+    )
     foreach ($f in $needed) {
-        $dest = Join-Path $Stage $f.Name
-        Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
-        [void]$manifest.Add(("{0}  {1} bytes  from {2}" -f $f.Name, $f.Length, $f.FullName))
+        Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $Stage $f.Name) -Force
+        $lines += ("{0}  {1} bytes  from {2}" -f $f.Name, $f.Length, $f.FullName)
         Write-Host ("  pack {0}" -f $f.Name)
     }
-    $manifest -join "`n" | Set-Content -Encoding utf8 (Join-Path $Stage 'INSTALL.txt')
+    $lines -join "`n" | Set-Content -Encoding utf8 (Join-Path $Stage 'INSTALL.txt')
     if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
     Compress-Archive -Path (Join-Path $Stage '*') -DestinationPath $ZipPath -Force
     Write-Host ("zip -> {0}  ({1} files, {2:N1} KB)" -f $ZipPath, $needed.Count, ((Get-Item $ZipPath).Length / 1KB))
