@@ -283,18 +283,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # First-pass from b87e device PDF glyph heights × INK_SCALE (not Style UI
-    # 68:48:28). Ratios H:B1:B2:P ≈ 2.55:1.45:1.125:1. Absolute ladder next.
-    si.ParagraphStyle.HEADING: 30.98,
-    si.ParagraphStyle.BOLD: 17.68,
-    si.ParagraphStyle.PLAIN: 12.15,
-    si.ParagraphStyle.BULLET: 12.15,
-    si.ParagraphStyle.BULLET2: 12.15,
-    si.ParagraphStyle.CHECKBOX: 12.15,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 12.15,
+    # VF recalib: Style map B ratios (68:48:28), mid H from OneNote pick
+    # (glyph ladder #4 L1 fit ≈ 33.3). Glyph PDF ratio made L1 too big vs rest.
+    si.ParagraphStyle.HEADING: 33.3,
+    si.ParagraphStyle.BOLD: 23.51,
+    si.ParagraphStyle.PLAIN: 13.71,
+    si.ParagraphStyle.BULLET: 13.71,
+    si.ParagraphStyle.BULLET2: 13.71,
+    si.ParagraphStyle.CHECKBOX: 13.71,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 13.71,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 13.67  # glyph L3 × INK_SCALE
+FONT_SIZE_SECOND_BOLD = 15.42  # 18/16 × plain
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
