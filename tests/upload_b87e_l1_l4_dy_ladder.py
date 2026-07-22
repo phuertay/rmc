@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Upload slight L1+L4 text-down ladder (same extra DY on both).
+"""Upload fine L1+L4 text-up ladder (−CSS px; same extra on both).
 
 Locked base: inkDX-4, textDX-60, textDY-28, L234=30, L34=15, L4=25.
-Ladder adds +d to L1 (HEADING) and +d more to L4 (on top of 25).
+Ladder adds d (≤0) to L1 and to L4 (L4 = 25+d).
 
   poetry run python tests/upload_b87e_l1_l4_dy_ladder.py
 """
@@ -16,15 +16,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 UPLOAD = ROOT / "upload_b87e_onenote.py"
 
-# slight down for L1 and L4
-NUDGES = (0, 4, 6, 8, 10, 12)
+# finer up (−)
+NUDGES = (0, -2, -4, -6, -8, -10)
 
 
 def main() -> int:
     n = len(NUDGES)
     for i, d in enumerate(NUDGES, 1):
-        tag = f"b87e-L1L4dy-{i}of{n}-dy{d:g}"
-        title = f"{tag} (+ lowers L1 & L4 slightly)"
+        tag = f"b87e-L1L4up-{i}of{n}-dy{d:g}"
+        title = f"{tag} (− raises L1 & L4 fine)"
         cmd = [
             sys.executable,
             str(UPLOAD),
@@ -56,7 +56,7 @@ def main() -> int:
                 return r.returncode
             time.sleep(2 * attempt)
         time.sleep(1.5)
-    print(f"done: {n} pages. Pick best L1L4dy Nof{n} (+ = lower L1 & L4).")
+    print(f"done: {n} pages. Pick best L1L4up Nof{n} (− = text up).")
     return 0
 
 
