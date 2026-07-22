@@ -108,9 +108,9 @@ def main() -> None:
     assert html.count("reMarkable Sans") >= 2
     assert "This would be the third" in html
     third = html.split("This would be the third")[0].rsplit("font-family:", 1)[-1]
-    assert third.startswith("'reMarkable Sans'"), third[:60]
+    assert third.startswith("reMarkable Sans"), third[:60]
     second = html.split("Then this is the second")[0].rsplit("font-family:", 1)[-1]
-    assert second.startswith("'reMarkable Serif Small'"), second[:60]
+    assert second.startswith("reMarkable Serif Small"), second[:60]
 
     print(
         f"ok b87e: 4 lines + {len(boxes)} boxes; "

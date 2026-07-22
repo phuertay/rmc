@@ -277,14 +277,11 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# Exact device faces (RCC / Style.qml): reMarkable Serif Small + reMarkable Sans.
-# OneNote cannot embed fonts — install TTFs from scripts/pull_remarkable_fonts.ps1
-# on the viewing PC. Fallbacks only if those families missing.
-FONT_FAMILY_SANS = "'reMarkable Sans','Noto Sans','Segoe UI',Arial,sans-serif"
-FONT_FAMILY_SERIF = (
-    "'reMarkable Serif Small','EB Garamond',Garamond,"
-    "'Palatino Linotype',Palatino,Georgia,serif"
-)
+# Exact device faces (Style.qml / RCC). OneNote keeps the first family name only;
+# a long fallback stack is unnecessary and confuses some clients.
+# Client must have those families installed; API cannot embed fonts.
+FONT_FAMILY_SANS = "reMarkable Sans"
+FONT_FAMILY_SERIF = "reMarkable Serif Small"
 FONT_SIZE_PT = {
     # Style map B (ark Style.qml): title.xl:title.lg:body.md = 68:48:28,
     # scaled so PLAIN=16 → 38.86 / 27.43. BOLD#2 kept empirical (no Style twin).
