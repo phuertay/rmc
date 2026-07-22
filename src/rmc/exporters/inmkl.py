@@ -72,7 +72,7 @@ Y_PAD = CSS_Y_PAD / CSS_PER_HIMETRIC
 # Chosen vs 204924 (−7,−19) over 205232 (−7,−20).
 # Y: HTML-only CSS_ALIGN_DY; tiny ink-only DY from live al_medio tweak.
 # X: strokes get CSS_ALIGN_DX + small extra so box clears "A".
-# ponytail: empirical; last nudge after real EB Garamond/Noto Sans install
+# ponytail: empirical; last nudge after real device-face install
 # (fallback metrics left boxes low — upper stroke through glyphs).
 _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
@@ -262,7 +262,7 @@ def html_text_origin_css(
         style == si.ParagraphStyle.BOLD and bold_ordinal == 1
     ):
         top -= ONENOTE_P_MARGIN_PX
-        # Real EB Garamond: box still low vs title — lower text (+8 vs prior +2).
+        # Real serif face: box still low vs title — lower text (+8 vs prior +2).
         # ponytail: leave global ink (al_medio OK on desktop).
         top -= round(rm_font_size_css(style, bold_ordinal=bold_ordinal) * TEXT_ASCENT_RATIO) - 8
     return left, float(round(top))
@@ -277,12 +277,14 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# Device faces (b87e PDF glyph outlines + remarkable fontconfig):
-#   title + first mid (BOLD#1) → EB Garamond; second mid (BOLD#2) + body → Noto Sans.
-# OneNote cannot embed fonts; stack closest Windows/Office stand-ins after.
-# ponytail: install EB Garamond + Noto Sans for a true match.
-FONT_FAMILY_SANS = "'Noto Sans','Segoe UI',Arial,sans-serif"
-FONT_FAMILY_SERIF = "'EB Garamond',Garamond,'Palatino Linotype',Palatino,Georgia,serif"
+# Exact device faces (RCC / Style.qml): reMarkable Serif Small + reMarkable Sans.
+# OneNote cannot embed fonts — install TTFs from scripts/pull_remarkable_fonts.ps1
+# on the viewing PC. Fallbacks only if those families missing.
+FONT_FAMILY_SANS = "'reMarkable Sans','Noto Sans','Segoe UI',Arial,sans-serif"
+FONT_FAMILY_SERIF = (
+    "'reMarkable Serif Small','EB Garamond',Garamond,"
+    "'Palatino Linotype',Palatino,Georgia,serif"
+)
 FONT_SIZE_PT = {
     # Style map B (ark Style.qml): title.xl:title.lg:body.md = 68:48:28,
     # scaled so PLAIN=16 → 38.86 / 27.43. BOLD#2 kept empirical (no Style twin).
@@ -322,8 +324,8 @@ def rm_font_size_css(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> floa
 
 
 def _font_family(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
-    # Device PDF outlines (b87e): L1 HEADING + L2 first BOLD → EB Garamond;
-    # L3 second BOLD + L4 PLAIN → Noto Sans. (.rm stores L2/L3 both as BOLD.)
+    # Device: L1 HEADING + L2 first BOLD → Serif Small; L3+ → Sans.
+    # (.rm stores L2/L3 both as BOLD.)
     if style == si.ParagraphStyle.HEADING:
         return FONT_FAMILY_SERIF
     if style == si.ParagraphStyle.BOLD and bold_ordinal == 1:

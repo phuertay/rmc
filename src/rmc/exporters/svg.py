@@ -261,13 +261,13 @@ def draw_text(text: si.Text, output):
     output.write('''
             <style>
                 text.heading {
-                    font: 20pt "EB Garamond", Garamond, "Palatino Linotype", Palatino, Georgia, serif;
+                    font: 20pt "reMarkable Serif Small", "EB Garamond", Garamond, "Palatino Linotype", Palatino, Georgia, serif;
                 }
                 text.bold {
-                    font: 11pt "EB Garamond", Garamond, "Palatino Linotype", Palatino, Georgia, serif;
+                    font: 11pt "reMarkable Serif Small", "EB Garamond", Garamond, "Palatino Linotype", Palatino, Georgia, serif;
                 }
                 text, text.plain {
-                    font: 8pt "Noto Sans", "Segoe UI", Arial, sans-serif;
+                    font: 8pt "reMarkable Sans", "Noto Sans", "Segoe UI", Arial, sans-serif;
                 }
             </style>
 ''')
