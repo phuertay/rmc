@@ -1,0 +1,7 @@
+read C:\Users\phuer\tmp\ark_tokens\bin\xochitl (22210328 bytes)
+qrc ark paths: 17
+token strings: 79
+fontsize lines: 2
+json blobs: 0
+fontsize number hits: 0
+wrote C:\Users\phuer\tmp\ark_tokens\extracted

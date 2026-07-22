@@ -1,0 +1,2 @@
+            lineHeight: 1.2
+        if (root.typography.lineHeight >= root.typography.fontSize) {

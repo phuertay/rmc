@@ -1,0 +1,17 @@
+qrc:/ark-imports/
+qrc:/ark-imports/tokens
+qrc:/ark/icons/checkmark
+qrc:/ark/icons/checkmark_circle
+qrc:/ark/icons/cloud_download
+qrc:/ark/icons/cloud_x
+qrc:/ark/icons/error_circle
+qrc:/ark/icons/information_circle
+qrc:/ark/icons/my_files
+qrc:/ark/icons/placeholder
+qrc:/ark/icons/screen_share
+qrc:/ark/icons/send
+qrc:/ark/icons/storage
+qrc:/ark/icons/warning_circle
+qrc:/ark/icons/wifi_3
+qrc:/ark/icons/wifi_x
+qrc:/ark/icons/x_medium
