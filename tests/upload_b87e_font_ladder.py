@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Upload b87e VF font-size ladder (Style proportions × scale).
+"""Upload b87e VF L3/L4 font ladder (H/B1 locked).
 
-Proportions: Style map B 68:48:28 + B2=18/16×plain.
-Mid H=33.3 (OneNote: L1 fit glyph-ladder #4); rest scaled from Style ratios.
+L1/L2 from style-ladder #3–#4 mid (34.13 / 24.1).
+L3/L4 plain ladder above prior style #5; B2 = 18/16 × plain.
 
   ONENOTE_TOKEN=… ONENOTE_SECTION=… poetry run python tests/upload_b87e_font_ladder.py
 """
@@ -16,20 +16,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 UPLOAD = ROOT / "upload_b87e_onenote.py"
 
-# Mid: Style ratios, H from VF-glyph ladder #4 L1 fit
-MID = (33.3, 23.51, 15.42, 13.71)  # H, B1, B2, P
-SCALES = (0.90, 0.95, 1.0, 1.05, 1.10)
+H, B1 = 34.13, 24.1
+B2_OVER_P = 18 / 16
+PLAINS = (16.0, 17.0, 18.0, 19.0, 20.0, 21.0)
 
 
 def main() -> int:
     if not os.environ.get("ONENOTE_TOKEN") or not os.environ.get("ONENOTE_SECTION"):
         print("need ONENOTE_TOKEN and ONENOTE_SECTION", file=sys.stderr)
         return 1
-    n = len(SCALES)
-    for i, k in enumerate(SCALES, 1):
-        h, b, b2, p = (round(x * k, 2) for x in MID)
-        tag = f"b87e-VF-style-{i}of{n}-k{str(k).replace('.', 'p')}"
-        title = f"{tag} {h:g}/{b:g}/{b2:g}/{p:g}"
+    n = len(PLAINS)
+    for i, p in enumerate(PLAINS, 1):
+        b2 = round(B2_OVER_P * p, 2)
+        tag = f"b87e-VF-L34-{i}of{n}-p{str(p).replace('.', 'p')}"
+        title = f"{tag} {H:g}/{B1:g}/{b2:g}/{p:g}"
         cmd = [
             sys.executable,
             str(UPLOAD),
@@ -38,9 +38,9 @@ def main() -> int:
             "--tag",
             tag,
             "--heading",
-            str(h),
+            str(H),
             "--bold",
-            str(b),
+            str(B1),
             "--second-bold",
             str(b2),
             "--plain",
@@ -50,7 +50,7 @@ def main() -> int:
         r = subprocess.run(cmd, cwd=str(ROOT.parent))
         if r.returncode != 0:
             return r.returncode
-    print(f"done: {n} pages (Style ratios, mid H=33.3). Pick best Nof{n}.")
+    print(f"done: {n} pages (H/B1 locked). Pick best L3/L4 Nof{n}.")
     return 0
 
 
