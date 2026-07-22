@@ -20,7 +20,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 # bump when share/zip logic changes — printed so stale downloads are obvious
-$ScriptRev = '2026-07-22-rcc-focus-ark'
+$ScriptRev = '2026-07-22-rcc-shift-carve'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -163,6 +163,7 @@ if ((Test-Path $xoLocal) -and $Py) {
     if (Test-Path $rccPy) {
         Write-Host "extracting Qt RCC (hard path, focus=ark-imports)..."
         $RccOut = Join-Path $Ext 'rcc'
+        if (Test-Path $RccOut) { Remove-Item -Recurse -Force $RccOut }
         & $Py $rccPy --binary $xoLocal --out $RccOut --focus ark-imports 2>&1 |
             Tee-Object -FilePath (Join-Path $Meta 'rcc-log.txt')
     } else {
@@ -220,7 +221,7 @@ if (Test-Path $Rcc) {
     $textExt = @('.txt', '.json', '.qml', '.js', '.css', '.md', '.xml', '.html', '.qss', '.conf')
     Get-ChildItem $Rcc -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
         $rel = $_.FullName.Substring($Rcc.Length).TrimStart('\', '/')
-        if ($_.Name -in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt')) { return }
+        if ($_.Name -in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt', 'FAILED.txt')) { return }
         if ($_.Length -gt 512KB) { return }
         if ($textExt -notcontains $_.Extension.ToLowerInvariant() -and $_.Name -ne '_meta.txt') { return }
         # skip obvious junk

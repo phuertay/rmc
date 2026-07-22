@@ -219,16 +219,14 @@ def find_tree_bases(
     for version in (3, 2, 1):
         es = entry_size(version)
         for name_off in root_candidates:
-            # big-endian name_offset + Directory flag
-            needle = struct.pack(">IH", name_off, FLAG_DIRECTORY)
+            # match name_offset only; flags may include more than Directory
+            needle = struct.pack(">I", name_off)
             for win in windows:
                 start = win.start
                 while True:
                     i = data.find(needle, start, win.stop)
                     if i < 0:
                         break
-                    # entry must be aligned to es for node 0; try i as entry start
-                    # name_offset is at entry+0, so i is tree_base for node 0
                     if i + es <= len(data):
                         ent = read_entry(data, i, 0, version)
                         if ent is not None:
@@ -402,6 +400,101 @@ def interesting(names: dict[int, str]) -> bool:
     )
 
 
+def name_table_variants(
+    nrange: range, names: dict[int, str]
+) -> list[tuple[range, dict[int, str], str]]:
+    """Try names base with/without a leading empty root (offset shift by 6)."""
+    out: list[tuple[range, dict[int, str], str]] = [
+        (nrange, names, "as-scanned"),
+    ]
+    if names.get(0) == "":
+        shifted = {k - 6: v for k, v in names.items() if k >= 6}
+        if shifted:
+            out.append(
+                (
+                    range(nrange.start + 6, nrange.stop),
+                    shifted,
+                    "drop-leading-empty",
+                )
+            )
+    elif "" not in names.values():
+        # try prepending synthetic empty at base-6 if bytes match
+        out.append((nrange, names, "no-empty"))
+    return out
+
+
+def carve_compressed_text(data: bytes, out: Path) -> list[str]:
+    """Fallback: decompress qCompress/zlib/zstd islands that look like tokens/QML."""
+    hits: list[str] = []
+    dest = out / "carved"
+    dest.mkdir(parents=True, exist_ok=True)
+    # qCompress: 4-byte BE uncompressed len + zlib
+    for magic in (b"\x78\x9c", b"\x78\xda", b"\x78\x01", b"\x78\x5e"):
+        start = 0
+        while True:
+            i = data.find(magic, start)
+            if i < 0 or i < 4:
+                break
+            # try as qCompress (size at i-4) or raw zlib at i
+            for zoff, with_size in ((i - 4, True), (i, False)):
+                try:
+                    if with_size:
+                        ulen = struct.unpack_from(">I", data, zoff)[0]
+                        if ulen < 8 or ulen > 5_000_000:
+                            continue
+                        body = zlib.decompress(data[zoff + 4 :])
+                        if abs(len(body) - ulen) > 16 and ulen < 10_000_000:
+                            # size hint mismatch — still keep if text looks good
+                            pass
+                    else:
+                        body = zlib.decompress(data[zoff:])
+                except Exception:
+                    continue
+                if not looks_like_text(body):
+                    continue
+                text = body.decode("utf-8", errors="ignore")
+                if not any(
+                    k in text
+                    for k in ("fontSize", "lineHeight", "fontFamily", "typography", "ark-imports")
+                ):
+                    continue
+                path = dest / f"zlib_{zoff:x}.txt"
+                path.write_bytes(body)
+                hits.append(str(path.relative_to(out)))
+                break
+            start = i + 1
+            if len(hits) >= 80:
+                return hits
+    # zstd magic 28 b5 2f fd
+    start = 0
+    try:
+        import zstandard
+
+        dctx = zstandard.ZstdDecompressor()
+    except Exception:
+        dctx = None
+    if dctx is not None:
+        while True:
+            i = data.find(b"\x28\xb5\x2f\xfd", start)
+            if i < 0:
+                break
+            try:
+                body = dctx.decompress(data[i : i + 2_000_000], max_output_size=5_000_000)
+            except Exception:
+                start = i + 1
+                continue
+            if looks_like_text(body):
+                text = body.decode("utf-8", errors="ignore")
+                if any(k in text for k in ("fontSize", "lineHeight", "fontFamily", "typography")):
+                    path = dest / f"zstd_{i:x}.txt"
+                    path.write_bytes(body)
+                    hits.append(str(path.relative_to(out)))
+            start = i + 1
+            if len(hits) >= 80:
+                break
+    return hits
+
+
 def extract_all(
     data: bytes,
     out: Path,
@@ -415,6 +508,7 @@ def extract_all(
         "files": 0,
         "interesting_trees": [],
         "failed_interesting": [],
+        "carved": 0,
     }
     fail_lines: list[str] = []
 
@@ -448,24 +542,40 @@ def extract_all(
         is_interesting = interesting(names)
         if prefer_interesting and not is_interesting and not focus and summary["trees"] >= 3:
             continue
-        # Full-file tree scan for ark-imports / focus — tables can be far from tree.
-        trees = find_tree_bases(data, nrange, names, full_scan=is_interesting or bool(focus))
-        if not trees:
+
+        found = None
+        used_variant = ""
+        used_names = names
+        used_range = nrange
+        for vr, vn, vlabel in name_table_variants(nrange, names):
+            trees = find_tree_bases(
+                data, vr, vn, full_scan=is_interesting or bool(focus)
+            )
+            if trees:
+                found = trees[0]
+                used_variant = vlabel
+                used_names = vn
+                used_range = vr
+                break
+        if not found:
             if is_interesting or focus:
-                msg = f"no tree for names@0x{nrange.start:x} ({len(names)} names): {list(names.values())[:12]}"
+                msg = (
+                    f"no tree for names@0x{nrange.start:x} ({len(names)} names): "
+                    f"{list(names.values())[:12]}"
+                )
                 fail_lines.append(msg)
                 summary["failed_interesting"].append(msg)
             continue
-        version, tree_base, files = trees[0]
+        version, tree_base, files = found
         blob_base = infer_blob_base(
             data,
             files,
-            hint_lo=min(nrange.start, tree_base) - 500_000,
-            hint_hi=max(nrange.stop, tree_base) + 2_000_000,
+            hint_lo=min(used_range.start, tree_base) - 500_000,
+            hint_hi=max(used_range.stop, tree_base) + 2_000_000,
         )
         if blob_base is None:
             if is_interesting or focus:
-                msg = f"no blob for tree@0x{tree_base:x} names@0x{nrange.start:x} files={len(files)}"
+                msg = f"no blob for tree@0x{tree_base:x} names@0x{used_range.start:x} files={len(files)} variant={used_variant}"
                 fail_lines.append(msg)
                 summary["failed_interesting"].append(msg)
             continue
@@ -490,17 +600,18 @@ def extract_all(
                     f"version={version}",
                     f"tree_base=0x{tree_base:x}",
                     f"blob_base=0x{blob_base:x}",
-                    f"names=0x{nrange.start:x}-0x{nrange.stop:x}",
+                    f"names=0x{used_range.start:x}-0x{used_range.stop:x}",
+                    f"variant={used_variant}",
                     f"file_count={len(files)}",
                     f"wrote={wrote}",
                     f"textish={textish}",
-                    "names: " + ", ".join(("∅" if not n else n) for n in names.values()),
+                    "names: "
+                    + ", ".join(("∅" if not n else n) for n in used_names.values()),
                 ]
             )
             + "\n",
             encoding="utf-8",
         )
-        # Reject garbage extracts (wrong blob base → binary junk)
         if textish == 0 and wrote > 0 and is_interesting:
             msg = f"rejected garbage tree@0x{tree_base:x} (0 textish of {wrote})"
             fail_lines.append(msg)
@@ -511,11 +622,24 @@ def extract_all(
         if is_interesting:
             summary["interesting_trees"].append(tree_dir.name)
 
+    carved = carve_compressed_text(data, out)
+    summary["carved"] = len(carved)
+
     hits: list[str] = []
     for p in out.rglob("*"):
         if not p.is_file() or p.name.startswith("_"):
             continue
-        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".qm", ".ico", ".ttf"}:
+        if p.suffix.lower() in {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".svg",
+            ".woff",
+            ".woff2",
+            ".qm",
+            ".ico",
+            ".ttf",
+        }:
             continue
         if p.stat().st_size > 2_000_000:
             continue
@@ -526,16 +650,24 @@ def extract_all(
             text = raw.decode("utf-8", errors="ignore")
         except Exception:
             continue
-        if not any(k in text for k in ("fontSize", "lineHeight", "font-size", "typography", "fontFamily")):
+        if not any(
+            k in text
+            for k in ("fontSize", "lineHeight", "font-size", "typography", "fontFamily")
+        ):
             continue
         for line in text.splitlines():
-            if any(k in line for k in ("fontSize", "lineHeight", "font-size", "fontFamily")):
+            if any(
+                k in line
+                for k in ("fontSize", "lineHeight", "font-size", "fontFamily")
+            ):
                 hits.append(f"{p.relative_to(out)}: {line.strip()[:200]}")
                 if len(hits) >= 500:
                     break
         if len(hits) >= 500:
             break
-    (out / "typography_hits.txt").write_text("\n".join(hits) + ("\n" if hits else ""), encoding="utf-8")
+    (out / "typography_hits.txt").write_text(
+        "\n".join(hits) + ("\n" if hits else ""), encoding="utf-8"
+    )
     summary["typography_hits"] = len(hits)
     if fail_lines:
         (out / "FAILED.txt").write_text("\n".join(fail_lines) + "\n", encoding="utf-8")
@@ -627,7 +759,7 @@ def main() -> int:
         focus=focus,
     )
     print(f"trees={summary['trees']} files={summary['files']} qres_files={summary['qres_files']}")
-    print(f"typography_hits={summary['typography_hits']}")
+    print(f"typography_hits={summary['typography_hits']} carved={summary.get('carved', 0)}")
     print(f"interesting: {summary['interesting_trees']}")
     if summary.get("failed_interesting"):
         print(f"failed: {summary['failed_interesting']}")
