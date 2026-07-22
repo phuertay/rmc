@@ -84,12 +84,13 @@ INK_EXTRA_DX_HEADING_CSS = 0
 INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); b87e-L2DX-4of7
 INK_EXTRA_DX_SECOND_BOLD_CSS = 0
 INK_EXTRA_DX_PLAIN_CSS = 0
-# No vertical ink nudge (desktop DY ladders reverted).
+# No HTML page nudge. Ink-only per-style DY (step3b inkDY ladder):
+# L1→4of5 (+4), L4→3of5 (0); L2/L3 linear between.
 PAGE_NUDGE_DY_CSS = 0
 INK_EXTRA_DY_CSS = 0
-INK_EXTRA_DY_HEADING_CSS = 0
-INK_EXTRA_DY_BOLD_CSS = 0
-INK_EXTRA_DY_SECOND_BOLD_CSS = 0
+INK_EXTRA_DY_HEADING_CSS = 4
+INK_EXTRA_DY_BOLD_CSS = 2
+INK_EXTRA_DY_SECOND_BOLD_CSS = 1
 INK_EXTRA_DY_PLAIN_CSS = 0
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
 INK_EXTRA_DY = round(INK_EXTRA_DY_CSS / CSS_PER_HIMETRIC)
@@ -280,11 +281,11 @@ FONT_SIZE_PT = {
     # Desktop lock (b87e step2): L1/L2 vs ink boxes; L3/L4 vs PDF glyph scale.
     si.ParagraphStyle.HEADING: 38.5,
     si.ParagraphStyle.BOLD: 27.5,
-    si.ParagraphStyle.PLAIN: 15.0,
-    si.ParagraphStyle.BULLET: 15.0,
-    si.ParagraphStyle.BULLET2: 15.0,
-    si.ParagraphStyle.CHECKBOX: 15.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 15.0,
+    si.ParagraphStyle.PLAIN: 16.0,
+    si.ParagraphStyle.BULLET: 16.0,
+    si.ParagraphStyle.BULLET2: 16.0,
+    si.ParagraphStyle.CHECKBOX: 16.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 16.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
 FONT_SIZE_SECOND_BOLD = 18.0
