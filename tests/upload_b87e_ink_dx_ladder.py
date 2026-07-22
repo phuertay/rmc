@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Upload b87e page-wide ink DX ladder (− = left).
-
-Fonts/S/L2dy locked. Shared DX on all styles.
+"""Upload b87e slight ink-left DX ladder (text DX/DY locked).
 
   poetry run python tests/upload_b87e_ink_dx_ladder.py
 """
@@ -15,15 +13,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 UPLOAD = ROOT / "upload_b87e_onenote.py"
 
-# current 0, then leftward
+# slight left from 0
 DXS = (0, -2, -4, -6, -8, -10)
 
 
 def main() -> int:
     n = len(DXS)
     for i, dx in enumerate(DXS, 1):
-        tag = f"b87e-inkDX-{i}of{n}-dx{dx:g}"
-        title = f"{tag} (− left)"
+        tag = f"b87e-inkDXfine-{i}of{n}-dx{dx:g}"
+        title = f"{tag} textDX-60 textDY-28 (− ink left)"
         cmd = [
             sys.executable,
             str(UPLOAD),
@@ -33,6 +31,10 @@ def main() -> int:
             tag,
             "--ink-dx",
             str(dx),
+            "--text-dx",
+            "-60",
+            "--text-dy",
+            "-28",
         ]
         print("===", title, "===")
         for attempt in range(1, 4):
@@ -43,7 +45,7 @@ def main() -> int:
                 return r.returncode
             time.sleep(2 * attempt)
         time.sleep(1.5)
-    print(f"done: {n} pages. Pick best inkDX Nof{n} (ink vs typed left edge).")
+    print(f"done: {n} pages. Pick best inkDXfine Nof{n} (− = ink left).")
     return 0
 
 

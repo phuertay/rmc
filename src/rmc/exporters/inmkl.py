@@ -349,7 +349,7 @@ TEXT_NUDGE_DY_BOLD1_CSS = 6  # b87e-L2dy-4of5
 TEXT_NUDGE_DY_HEADING_CSS = 0
 # All typed HTML: +CSS px (negative = left / up).
 TEXT_NUDGE_DX_CSS = -60  # b87e_textDX-60
-TEXT_NUDGE_DY_CSS = 0  # ladder: up ~ L1 "s" x-height (~22 CSS @ 32pt)
+TEXT_NUDGE_DY_CSS = -28  # b87e-textDY-5of6
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
