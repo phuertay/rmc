@@ -4,6 +4,7 @@
   ONENOTE_TOKEN=… ONENOTE_SECTION=… poetry run python tests/upload_b87e_onenote.py
   poetry run python tests/upload_b87e_onenote.py --title '…' --heading 38.5 --bold 27.5
 
+Caches token to /tmp/onenote_token.env (mode 600); reuses before asking again.
 Never commits tokens.
 """
 from __future__ import annotations
@@ -26,6 +27,44 @@ ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm" / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm"
 OUT = ROOT / "onenote_calib" / "out"
 OUT.mkdir(parents=True, exist_ok=True)
+TOKEN_CACHE = Path("/tmp/onenote_token.env")
+
+
+def _load_token_cache() -> None:
+    """Reuse last Graph token from /tmp before asking for a new one."""
+    if os.environ.get("ONENOTE_TOKEN") and os.environ.get("ONENOTE_SECTION"):
+        return
+    if not TOKEN_CACHE.is_file():
+        return
+    for line in TOKEN_CACHE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line.startswith("export "):
+            continue
+        # export NAME='value'  or  export NAME=value
+        _, _, rest = line.partition(" ")
+        name, _, raw = rest.partition("=")
+        if name not in ("ONENOTE_TOKEN", "ONENOTE_SECTION", "ONENOTE_EMAIL"):
+            continue
+        if os.environ.get(name):
+            continue
+        val = raw.strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
+            val = val[1:-1]
+        os.environ[name] = val
+
+
+def _save_token_cache(token: str, section: str, email: str = "") -> None:
+    lines = [
+        f"export ONENOTE_TOKEN='{token}'",
+        f"export ONENOTE_SECTION='{section}'",
+    ]
+    if email:
+        lines.append(f"export ONENOTE_EMAIL='{email}'")
+    TOKEN_CACHE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        TOKEN_CACHE.chmod(0o600)
+    except OSError:
+        pass
 
 
 def main() -> int:
@@ -39,12 +78,14 @@ def main() -> int:
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
+    _load_token_cache()
     token = os.environ.get("ONENOTE_TOKEN", "")
     section = os.environ.get("ONENOTE_SECTION", "")
     email = os.environ.get("ONENOTE_EMAIL", "")
     if not token or not section:
-        print("need ONENOTE_TOKEN and ONENOTE_SECTION", file=sys.stderr)
+        print("need ONENOTE_TOKEN and ONENOTE_SECTION (no /tmp cache)", file=sys.stderr)
         return 1
+    _save_token_cache(token, section, email)
 
     if args.ink_scale is not None:
         inmkl.INK_SCALE = args.ink_scale

@@ -10,7 +10,6 @@ Ink coords are int himetric → effective size step ~0.001–0.002 in S
 """
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 import time
@@ -26,9 +25,7 @@ SCALES = (1.55, 1.45, 1.35, 1.25, 1.15)
 
 
 def main() -> int:
-    if not os.environ.get("ONENOTE_TOKEN") or not os.environ.get("ONENOTE_SECTION"):
-        print("need ONENOTE_TOKEN and ONENOTE_SECTION", file=sys.stderr)
-        return 1
+    # upload_b87e_onenote.py loads /tmp/onenote_token.env if env empty
     n = len(SCALES)
     for i, S in enumerate(SCALES, 1):
         stag = str(S).replace(".", "p")

@@ -22,9 +22,7 @@ PLAINS = (16.0, 17.0, 18.0, 19.0, 20.0, 21.0)
 
 
 def main() -> int:
-    if not os.environ.get("ONENOTE_TOKEN") or not os.environ.get("ONENOTE_SECTION"):
-        print("need ONENOTE_TOKEN and ONENOTE_SECTION", file=sys.stderr)
-        return 1
+    # upload_b87e_onenote.py loads /tmp/onenote_token.env if env empty
     n = len(PLAINS)
     for i, p in enumerate(PLAINS, 1):
         b2 = round(B2_OVER_P * p, 2)
