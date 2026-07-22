@@ -1,0 +1,5 @@
+read C:\Users\phuer\tmp\ark_tokens\bin\xochitl (22210328 bytes)
+trees=5 files=8 qres_files=0
+typography_hits=90
+interesting: []
+wrote C:\Users\phuer\tmp\ark_tokens\extracted\rcc

@@ -35,13 +35,18 @@ def encode_name(name: str) -> bytes:
     return struct.pack(">HI", len(name), qhash(name)) + utf
 
 
-def parse_name_at(data: bytes, off: int) -> tuple[str, int] | None:
+def parse_name_at(data: bytes, off: int, *, allow_empty: bool = False) -> tuple[str, int] | None:
     if off + 6 > len(data):
         return None
     size = struct.unpack_from(">H", data, off)[0]
-    if size == 0 or size > 512:
-        return None
     h = struct.unpack_from(">I", data, off + 2)[0]
+    # Qt root is often the empty string: size=0, hash=0 — only when explicitly allowed
+    if size == 0:
+        if allow_empty and h == 0:
+            return "", off + 6
+        return None
+    if size > 512:
+        return None
     end = off + 6 + size * 2
     if end > len(data):
         return None
@@ -50,7 +55,7 @@ def parse_name_at(data: bytes, off: int) -> tuple[str, int] | None:
         name = "".join(chr(c) for c in chars)
     except ValueError:
         return None
-    if not name or any(ord(c) < 0x20 and c not in "\t\n\r" for c in name):
+    if any(ord(c) < 0x20 and c not in "\t\n\r" for c in name):
         return None
     if qhash(name) != h:
         return None
@@ -72,6 +77,9 @@ def scan_name_sections(data: bytes) -> list[tuple[range, dict[int, str]]]:
                     cand = start_char - 6
                     if cand >= 0 and cand not in hits and parse_name_at(data, cand):
                         hits.add(cand)
+                        # empty root name often sits immediately before first real name
+                        if cand >= 6 and parse_name_at(data, cand - 6, allow_empty=True) == ("", cand):
+                            hits.add(cand - 6)
                 i = j
             else:
                 i += 2
@@ -83,14 +91,22 @@ def scan_name_sections(data: bytes) -> list[tuple[range, dict[int, str]]]:
             continue
         names: dict[int, str] = {}
         cur = off
+        # leading empty only
+        first = parse_name_at(data, cur, allow_empty=True)
+        if first and first[0] == "":
+            names[0] = ""
+            used.update(range(cur, first[1]))
+            cur = first[1]
         while True:
-            parsed = parse_name_at(data, cur)
+            parsed = parse_name_at(data, cur)  # non-empty only
             if not parsed:
                 break
             name, nxt = parsed
             names[cur - off] = name
             used.update(range(cur, nxt))
             cur = nxt
+            if len(names) > 5000:
+                break
         if len(names) >= 2:
             sections.append((range(off, cur), names))
     return sections
@@ -167,39 +183,66 @@ def try_tree_at(
     nodes = parse_tree(data, tree_base, names, 0, 1, version, seen)
     if not nodes:
         return None
-    # every name table entry should appear once in a real tree
-    if len(seen) != len(names):
+    # Prefer full name-table coverage; allow small slack for trailing junk names.
+    if len(seen) < max(2, len(names) - 2) and len(seen) != len(names):
+        return None
+    if len(seen) > len(names):
         return None
     files = walk_files(nodes)
     return files or None
 
 
 def find_tree_bases(
-    data: bytes, name_range: range, names: dict[int, str]
+    data: bytes,
+    name_range: range,
+    names: dict[int, str],
+    *,
+    full_scan: bool = False,
 ) -> list[tuple[int, int, list]]:
+    """Locate tree by scanning for directory entries whose name_offset is in this table."""
     hits: list[tuple[int, int, list]] = []
-    windows = [
-        range(max(0, name_range.start - 2_000_000), name_range.start),
-        range(name_range.stop, min(len(data), name_range.stop + 2_000_000)),
-    ]
-    name_offs = set(names)
+    if full_scan:
+        windows = [range(0, len(data))]
+    else:
+        windows = [
+            range(max(0, name_range.start - 2_000_000), name_range.start),
+            range(name_range.stop, min(len(data), name_range.stop + 2_000_000)),
+        ]
+
+    # Prefer likely roots first (empty, ark-imports, qt, then others)
+    preferred = []
+    for off, name in names.items():
+        if name in ("", "ark-imports", "ark", "qt", "tokens", "qml"):
+            preferred.append(off)
+    root_candidates = preferred + [o for o in names if o not in preferred]
+
     for version in (3, 2, 1):
         es = entry_size(version)
-        for win in windows:
-            start = win.start - (win.start % 2)
-            for off in range(start, max(start, win.stop - es), 2):
-                ent = read_entry(data, off, 0, version)
-                if ent is None:
-                    continue
-                name_off, flags, a, _b = ent
-                if name_off not in name_offs or not (flags & FLAG_DIRECTORY):
-                    continue
-                if a < 1 or a > len(names) + 5:
-                    continue
-                files = try_tree_at(data, off, names, version)
-                if files is not None:
-                    hits.append((version, off, files))
-                    return hits
+        for name_off in root_candidates:
+            # big-endian name_offset + Directory flag
+            needle = struct.pack(">IH", name_off, FLAG_DIRECTORY)
+            for win in windows:
+                start = win.start
+                while True:
+                    i = data.find(needle, start, win.stop)
+                    if i < 0:
+                        break
+                    # entry must be aligned to es for node 0; try i as entry start
+                    # name_offset is at entry+0, so i is tree_base for node 0
+                    if i + es <= len(data):
+                        ent = read_entry(data, i, 0, version)
+                        if ent is not None:
+                            noff, flags, a, _b = ent
+                            if (
+                                noff == name_off
+                                and (flags & FLAG_DIRECTORY)
+                                and 1 <= a <= len(names) + 5
+                            ):
+                                files = try_tree_at(data, i, names, version)
+                                if files is not None:
+                                    hits.append((version, i, files))
+                                    return hits
+                    start = i + 1
     return hits
 
 
@@ -244,39 +287,57 @@ def infer_blob_base(
     lo = max(0, hint_lo)
     hi = min(len(data), hint_hi)
 
-    if len(offs) >= 2:
-        deltas = [offs[i + 1] - offs[i] - 4 for i in range(len(offs) - 1)]
-        if any(d <= 0 or d > 50_000_000 for d in deltas):
+    def try_window(wlo: int, whi: int) -> int | None:
+        if len(offs) >= 2:
+            deltas = [offs[i + 1] - offs[i] - 4 for i in range(len(offs) - 1)]
+            if any(d <= 0 or d > 50_000_000 for d in deltas):
+                return None
+            needle = struct.pack(">I", deltas[0])
+            start = wlo
+            while start < whi:
+                i = data.find(needle, start, whi)
+                if i < 0:
+                    break
+                base = i - offs[0]
+                if base >= 0:
+                    good = True
+                    for j in range(len(offs) - 1):
+                        payload = read_blob(data, base, offs[j])
+                        if payload is None or len(payload) != deltas[j]:
+                            good = False
+                            break
+                    if good and read_blob(data, base, offs[-1]) is not None:
+                        return base
+                start = i + 1
             return None
-        needle = struct.pack(">I", deltas[0])
-        start = lo
-        while start < hi:
-            i = data.find(needle, start, hi)
-            if i < 0:
-                break
-            base = i - offs[0]
-            if base >= 0:
-                good = True
-                for j in range(len(offs) - 1):
-                    payload = read_blob(data, base, offs[j])
-                    if payload is None or len(payload) != deltas[j]:
-                        good = False
-                        break
-                if good and read_blob(data, base, offs[-1]) is not None:
-                    return base
-            start = i + 1
+        only = offs[0]
+        # single file: probe every 4 bytes is too slow on full file — sample candidates
+        # where u32be at base+only looks like a plausible size
+        step = 4 if (whi - wlo) < 4_000_000 else 16
+        for base in range(wlo, whi, step):
+            payload = read_blob(data, base, only)
+            if payload is not None and 0 < len(payload) < 5_000_000:
+                return base
+        if read_blob(data, 0, only) is not None:
+            return 0
         return None
 
-    # single file: size header at blob_base + offset; search near hints
-    only = offs[0]
-    for base in range(lo, hi, 4):
-        payload = read_blob(data, base, only)
-        if payload is not None and 0 < len(payload) < 5_000_000:
-            return base
-    # absolute-ish: blob_base == 0 only if offset itself points at a size field
-    if read_blob(data, 0, only) is not None:
-        return 0
+    found = try_window(lo, hi)
+    if found is not None:
+        return found
+    # fallback: whole file (interesting trees often far from name table)
+    if lo > 0 or hi < len(data):
+        return try_window(0, len(data))
     return None
+
+
+def looks_like_text(body: bytes) -> bool:
+    if not body:
+        return False
+    sample = body[:4096]
+    # UTF-8 / ASCII heavy
+    printable = sum(1 for b in sample if 9 <= b <= 13 or 32 <= b <= 126)
+    return printable / len(sample) > 0.85
 
 
 def extract_qres_file(data: bytes, off: int, out_dir: Path) -> int:
@@ -292,6 +353,10 @@ def extract_qres_file(data: bytes, off: int, out_dir: Path) -> int:
     blob_abs = off + data_off
     names: dict[int, str] = {}
     cur = names_abs
+    first = parse_name_at(data, cur, allow_empty=True)
+    if first and first[0] == "":
+        names[0] = ""
+        cur = first[1]
     while cur < len(data):
         parsed = parse_name_at(data, cur)
         if not parsed:
@@ -299,6 +364,8 @@ def extract_qres_file(data: bytes, off: int, out_dir: Path) -> int:
         name, nxt = parsed
         names[cur - names_abs] = name
         cur = nxt
+        if len(names) > 5000:
+            break
     if not names:
         return 0
     files = try_tree_at(data, tree_abs, names, version)
@@ -335,9 +402,21 @@ def interesting(names: dict[int, str]) -> bool:
     )
 
 
-def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict:
+def extract_all(
+    data: bytes,
+    out: Path,
+    prefer_interesting: bool = True,
+    focus: str | None = None,
+) -> dict:
     out.mkdir(parents=True, exist_ok=True)
-    summary: dict = {"qres_files": 0, "trees": 0, "files": 0, "interesting_trees": []}
+    summary: dict = {
+        "qres_files": 0,
+        "trees": 0,
+        "files": 0,
+        "interesting_trees": [],
+        "failed_interesting": [],
+    }
+    fail_lines: list[str] = []
 
     start = 0
     while True:
@@ -351,7 +430,9 @@ def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict
     (out / "name_sections.txt").write_text(
         "\n".join(
             f"0x{r.start:x}-0x{r.stop:x} ({len(names)} names): "
-            + ", ".join(list(names.values())[:40])
+            + ", ".join(
+                ("∅" if not n else n) for n in list(names.values())[:40]
+            )
             + ("…" if len(names) > 40 else "")
             for r, names in sections
         )
@@ -361,10 +442,19 @@ def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict
 
     ordered = sorted(sections, key=lambda sn: (0 if interesting(sn[1]) else 1, -len(sn[1])))
     for idx, (nrange, names) in enumerate(ordered):
-        if prefer_interesting and not interesting(names) and summary["trees"] >= 5:
+        name_blob = " ".join(names.values()).lower()
+        if focus and focus.lower() not in name_blob:
             continue
-        trees = find_tree_bases(data, nrange, names)
+        is_interesting = interesting(names)
+        if prefer_interesting and not is_interesting and not focus and summary["trees"] >= 3:
+            continue
+        # Full-file tree scan for ark-imports / focus — tables can be far from tree.
+        trees = find_tree_bases(data, nrange, names, full_scan=is_interesting or bool(focus))
         if not trees:
+            if is_interesting or focus:
+                msg = f"no tree for names@0x{nrange.start:x} ({len(names)} names): {list(names.values())[:12]}"
+                fail_lines.append(msg)
+                summary["failed_interesting"].append(msg)
             continue
         version, tree_base, files = trees[0]
         blob_base = infer_blob_base(
@@ -374,10 +464,15 @@ def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict
             hint_hi=max(nrange.stop, tree_base) + 2_000_000,
         )
         if blob_base is None:
+            if is_interesting or focus:
+                msg = f"no blob for tree@0x{tree_base:x} names@0x{nrange.start:x} files={len(files)}"
+                fail_lines.append(msg)
+                summary["failed_interesting"].append(msg)
             continue
         tree_dir = out / f"tree_{idx:03d}_v{version}_{tree_base:x}"
         tree_dir.mkdir(parents=True, exist_ok=True)
         wrote = 0
+        textish = 0
         for path, flags, dop in files:
             raw = read_blob(data, blob_base, dop)
             if raw is None:
@@ -387,6 +482,8 @@ def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(body)
             wrote += 1
+            if looks_like_text(body):
+                textish += 1
         (tree_dir / "_meta.txt").write_text(
             "\n".join(
                 [
@@ -396,33 +493,43 @@ def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict
                     f"names=0x{nrange.start:x}-0x{nrange.stop:x}",
                     f"file_count={len(files)}",
                     f"wrote={wrote}",
-                    "names: " + ", ".join(names.values()),
+                    f"textish={textish}",
+                    "names: " + ", ".join(("∅" if not n else n) for n in names.values()),
                 ]
             )
             + "\n",
             encoding="utf-8",
         )
+        # Reject garbage extracts (wrong blob base → binary junk)
+        if textish == 0 and wrote > 0 and is_interesting:
+            msg = f"rejected garbage tree@0x{tree_base:x} (0 textish of {wrote})"
+            fail_lines.append(msg)
+            summary["failed_interesting"].append(msg)
+            continue
         summary["trees"] += 1
         summary["files"] += wrote
-        if interesting(names):
+        if is_interesting:
             summary["interesting_trees"].append(tree_dir.name)
 
     hits: list[str] = []
     for p in out.rglob("*"):
         if not p.is_file() or p.name.startswith("_"):
             continue
-        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".qm", ".ico"}:
+        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".qm", ".ico", ".ttf"}:
             continue
         if p.stat().st_size > 2_000_000:
             continue
+        raw = p.read_bytes()
+        if not looks_like_text(raw):
+            continue
         try:
-            text = p.read_text(encoding="utf-8", errors="ignore")
+            text = raw.decode("utf-8", errors="ignore")
         except Exception:
             continue
-        if not any(k in text for k in ("fontSize", "lineHeight", "font-size", "typography", "pt")):
+        if not any(k in text for k in ("fontSize", "lineHeight", "font-size", "typography", "fontFamily")):
             continue
         for line in text.splitlines():
-            if any(k in line for k in ("fontSize", "lineHeight", "font-size", "fontFamily", "pt")):
+            if any(k in line for k in ("fontSize", "lineHeight", "font-size", "fontFamily")):
                 hits.append(f"{p.relative_to(out)}: {line.strip()[:200]}")
                 if len(hits) >= 500:
                     break
@@ -430,6 +537,8 @@ def extract_all(data: bytes, out: Path, prefer_interesting: bool = True) -> dict
             break
     (out / "typography_hits.txt").write_text("\n".join(hits) + ("\n" if hits else ""), encoding="utf-8")
     summary["typography_hits"] = len(hits)
+    if fail_lines:
+        (out / "FAILED.txt").write_text("\n".join(fail_lines) + "\n", encoding="utf-8")
     (out / "SUMMARY.txt").write_text(
         "\n".join(f"{k}: {v}" for k, v in summary.items()) + "\n", encoding="utf-8"
     )
@@ -494,6 +603,11 @@ def main() -> int:
     ap.add_argument("--binary", type=Path)
     ap.add_argument("--out", type=Path)
     ap.add_argument("--all", action="store_true", help="extract non-interesting trees too")
+    ap.add_argument(
+        "--focus",
+        default="ark-imports",
+        help="only name tables containing this substring (default: ark-imports; empty=all)",
+    )
     ap.add_argument("--self-check", action="store_true")
     args = ap.parse_args()
     if args.self_check:
@@ -505,10 +619,18 @@ def main() -> int:
         return 1
     data = args.binary.read_bytes()
     print(f"read {args.binary} ({len(data)} bytes)")
-    summary = extract_all(data, args.out, prefer_interesting=not args.all)
+    focus = args.focus.strip() or None
+    summary = extract_all(
+        data,
+        args.out,
+        prefer_interesting=not args.all,
+        focus=focus,
+    )
     print(f"trees={summary['trees']} files={summary['files']} qres_files={summary['qres_files']}")
     print(f"typography_hits={summary['typography_hits']}")
     print(f"interesting: {summary['interesting_trees']}")
+    if summary.get("failed_interesting"):
+        print(f"failed: {summary['failed_interesting']}")
     print(f"wrote {args.out}")
     return 0
 

@@ -20,7 +20,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 # bump when share/zip logic changes — printed so stale downloads are obvious
-$ScriptRev = '2026-07-22-rcc-share-nocopy'
+$ScriptRev = '2026-07-22-rcc-focus-ark'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -86,7 +86,7 @@ if ($LocalOnly) {
     }
     # Use the given path as-is — never Copy-Item onto itself.
     $xoLocal = (Resolve-Path -LiteralPath $LocalBinary).Path
-    Write-Host "-> local-only  binary=$xoLocal  out=$OutRoot"
+    Write-Host "-> local-only  rev=$ScriptRev  binary=$xoLocal  out=$OutRoot"
     "local-only $xoLocal size=$((Get-Item -LiteralPath $xoLocal).Length)" |
         Set-Content -Encoding utf8 (Join-Path $Meta 'device.txt')
 } else {
@@ -161,9 +161,9 @@ if ((Test-Path $xoLocal) -and $Py) {
     & $Py $carvePy --binary $xoLocal --out $Ext 2>&1 |
         Tee-Object -FilePath (Join-Path $Meta 'carve-log.txt')
     if (Test-Path $rccPy) {
-        Write-Host "extracting Qt RCC (hard path)..."
+        Write-Host "extracting Qt RCC (hard path, focus=ark-imports)..."
         $RccOut = Join-Path $Ext 'rcc'
-        & $Py $rccPy --binary $xoLocal --out $RccOut 2>&1 |
+        & $Py $rccPy --binary $xoLocal --out $RccOut --focus ark-imports 2>&1 |
             Tee-Object -FilePath (Join-Path $Meta 'rcc-log.txt')
     } else {
         Write-Warning "missing extract_qt_rcc.py next to this script"
@@ -214,7 +214,7 @@ Get-ChildItem $Ext -Filter 'json_blob_*.json' -File -ErrorAction SilentlyContinu
 # RCC: summaries + text-like payloads only
 $Rcc = Join-Path $Ext 'rcc'
 if (Test-Path $Rcc) {
-    foreach ($name in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt')) {
+    foreach ($name in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt', 'FAILED.txt')) {
         Copy-ShareFile (Join-Path $Rcc $name) ("extracted\rcc\" + $name)
     }
     $textExt = @('.txt', '.json', '.qml', '.js', '.css', '.md', '.xml', '.html', '.qss', '.conf')
