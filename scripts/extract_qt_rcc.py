@@ -14,7 +14,7 @@ import struct
 import zlib
 from pathlib import Path
 
-EXTRACTOR_REV = "2026-07-22-rcc-shift-carve-v2"
+EXTRACTOR_REV = "2026-07-22-zstd-unique-blob"
 
 FLAG_COMPRESSED = 0x01
 FLAG_DIRECTORY = 0x02
@@ -247,6 +247,19 @@ def find_tree_bases(
 
 
 def decompress_blob(payload: bytes, flags: int) -> bytes:
+    if flags & FLAG_COMPRESSED_ZSTD:
+        try:
+            import zstandard  # type: ignore
+
+            dctx = zstandard.ZstdDecompressor()
+            for candidate in (payload, payload[4:] if len(payload) > 4 else payload):
+                try:
+                    return dctx.decompress(candidate, max_output_size=5_000_000)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return payload
     if flags & FLAG_COMPRESSED:
         if len(payload) < 4:
             return payload
@@ -257,13 +270,6 @@ def decompress_blob(payload: bytes, flags: int) -> bytes:
                 return zlib.decompress(payload)
             except zlib.error:
                 return payload
-    if flags & FLAG_COMPRESSED_ZSTD:
-        try:
-            import zstandard  # type: ignore
-
-            return zstandard.ZstdDecompressor().decompress(payload)
-        except Exception:
-            return payload
     return payload
 
 
@@ -283,6 +289,7 @@ def infer_blob_base(
     hint_lo: int,
     hint_hi: int,
 ) -> int | None:
+    # Duplicate data_offsets are normal (aliases); unique-sort for the size chain.
     offs = sorted({d for _, _, d in files})
     lo = max(0, hint_lo)
     hi = min(len(data), hint_hi)
@@ -292,27 +299,27 @@ def infer_blob_base(
             deltas = [offs[i + 1] - offs[i] - 4 for i in range(len(offs) - 1)]
             if any(d <= 0 or d > 50_000_000 for d in deltas):
                 return None
-            needle = struct.pack(">I", deltas[0])
-            start = wlo
-            while start < whi:
-                i = data.find(needle, start, whi)
-                if i < 0:
-                    break
-                base = i - offs[0]
-                if base >= 0:
-                    good = True
-                    for j in range(len(offs) - 1):
-                        payload = read_blob(data, base, offs[j])
-                        if payload is None or len(payload) != deltas[j]:
-                            good = False
-                            break
-                    if good and read_blob(data, base, offs[-1]) is not None:
-                        return base
-                start = i + 1
+            # Prefer full chain; fall back to long prefix (last blob size unknown).
+            for n in range(len(deltas), 2, -1):
+                needle = struct.pack(">I", deltas[0])
+                start = wlo
+                while start < whi:
+                    i = data.find(needle, start, whi)
+                    if i < 0:
+                        break
+                    base = i - offs[0]
+                    if base >= 0:
+                        good = True
+                        for j in range(n):
+                            payload = read_blob(data, base, offs[j])
+                            if payload is None or len(payload) != deltas[j]:
+                                good = False
+                                break
+                        if good and read_blob(data, base, offs[-1]) is not None:
+                            return base
+                    start = i + 1
             return None
         only = offs[0]
-        # single file: probe every 4 bytes is too slow on full file — sample candidates
-        # where u32be at base+only looks like a plausible size
         step = 4 if (whi - wlo) < 4_000_000 else 16
         for base in range(wlo, whi, step):
             payload = read_blob(data, base, only)
@@ -325,7 +332,6 @@ def infer_blob_base(
     found = try_window(lo, hi)
     if found is not None:
         return found
-    # fallback: whole file (interesting trees often far from name table)
     if lo > 0 or hi < len(data):
         return try_window(0, len(data))
     return None
