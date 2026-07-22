@@ -1,8 +1,9 @@
 # Pull reMarkable fonts + fontconfig (+ optional xochitl size hints) over SSH.
 #
-# Run from a PC that can reach the tablet (USB 10.11.99.1 or Wi-Fi IP):
+# Run from a PC that can reach the tablet (USB 10.11.99.1 or Wi-Fi IP).
+# Expects $env:RM_PASS already set when using password auth (PuTTY plink+pscp).
 #   .\scripts\pull_remarkable_fonts.ps1
-#   $env:RM_HOST='192.168.1.50'; $env:RM_PASS='…'; .\scripts\pull_remarkable_fonts.ps1
+#   $env:RM_HOST='192.168.1.50'; .\scripts\pull_remarkable_fonts.ps1
 # Output zip: <OutDir>\remarkable_onenote_fonts.zip  (Serif Small + Sans only)
 #
 # Already have xochitl (fonts often live only in RCC, not /usr/share/fonts):
@@ -12,10 +13,10 @@
 # OneNote will honor CSS font-family "reMarkable Serif Small" / "reMarkable Sans".
 # Script writes remarkable_onenote_fonts.zip (needed faces only). Do NOT commit it.
 #
-# Password (pick one):
-#   $env:RM_PASS = '...'          # non-interactive (needs PuTTY plink/pscp on PATH)
-#   -Password '...'               # same, as parameter
-#   (omit)                        # OpenSSH prompts interactively, or use an SSH key
+# Auth (pick one):
+#   $env:RM_PASS already set   # non-interactive (needs PuTTY plink/pscp on PATH)
+#   -Password '...'            # same, as parameter (avoid in shared history)
+#   (omit password)            # OpenSSH prompts / SSH key
 #
 # Needs: OpenSSH (ssh/scp) and/or PuTTY (plink/pscp) when RM_PASS is set.
 # Enable SSH in tablet Settings.
@@ -27,7 +28,7 @@ param(
     [string]$LocalBinary = ''  # carve TTFs from this xochitl; skip SSH if set alone
 )
 $ErrorActionPreference = 'Stop'
-$ScriptRev = '2026-07-22-fonts-zip-v2'
+$ScriptRev = '2026-07-22-fonts-zip-v3'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -153,6 +154,7 @@ Install PuTTY, or omit the password and type it when OpenSSH prompts,
 or set up an SSH key (recommended).
 "@
         }
+        Write-Host ("auth=RM_PASS (len={0})" -f $Password.Length)
     }
 
     Write-Host "-> $Target  out=$OutRoot  auth=$(if ($UsePass) { 'RM_PASS/plink' } else { 'ssh key or prompt' })"
