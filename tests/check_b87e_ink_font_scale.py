@@ -16,7 +16,7 @@ from rmc.exporters import inmkl as ink
 ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm" / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm"
 
-LOCK_H, LOCK_B1 = 34.13, 24.1
+LOCK_H, LOCK_B1, LOCK_B2, LOCK_P = 34.13, 24.1, 19.12, 17.0
 OK = 0.02  # pt
 
 
@@ -42,15 +42,15 @@ def main() -> None:
     print("line                          font_pt  ink_S")
     for label, pt, S, _st, _bo in lines:
         print(f"{label:28} {pt:7.2f}  {S:6.3f}")
-    h, b1 = lines[0][1], lines[1][1]
-    if abs(h - LOCK_H) > OK or abs(b1 - LOCK_B1) > OK:
-        print(f"FAIL: H/B1 want {LOCK_H}/{LOCK_B1} got {h}/{b1}")
+    got = [lines[i][1] for i in range(4)]
+    want = [LOCK_H, LOCK_B1, LOCK_B2, LOCK_P]
+    if any(abs(g - w) > OK for g, w in zip(got, want)):
+        print(f"FAIL: want {want} got {got}")
         sys.exit(1)
     if any(abs(S - ink.INK_SCALE) > 1e-6 for _l, _p, S, _st, _bo in lines):
         print("FAIL: ink scale must be page-wide")
         sys.exit(1)
-    print(f"ok: H/B1 locked {h:g}/{b1:g}; L3/L4={lines[2][1]:g}/{lines[3][1]:g}; "
-          f"INK_SCALE={ink.INK_SCALE}")
+    print(f"ok: fonts locked {'/'.join(f'{x:g}' for x in got)}; INK_SCALE={ink.INK_SCALE}")
 
 
 if __name__ == "__main__":
