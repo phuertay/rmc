@@ -4,14 +4,12 @@
 # Expects $env:RM_PASS already set when using password auth (PuTTY plink+pscp).
 #   .\scripts\pull_remarkable_fonts.ps1
 #   $env:RM_HOST='192.168.1.50'; .\scripts\pull_remarkable_fonts.ps1
-# Output zip: <OutDir>\remarkable_onenote_fonts.zip  (Serif Small + Sans only)
+# Install folder: <OutDir>\install_me\  (valid .ttf only — open and Install for all users)
 #
 # Already have xochitl (fonts often live only in RCC, not /usr/share/fonts):
 #   .\scripts\pull_remarkable_fonts.ps1 -LocalBinary C:\path\to\xochitl
 #
-# Install pulled TTFs on Windows (right-click → Install for all users), then
-# OneNote will honor CSS font-family "reMarkable Serif Small" / "reMarkable Sans".
-# Script writes remarkable_onenote_fonts.zip (needed faces only). Do NOT commit it.
+# OneNote CSS: "reMarkable Serif Small" / "reMarkable Sans". Do NOT commit fonts.
 #
 # Auth (pick one):
 #   $env:RM_PASS already set   # non-interactive (needs PuTTY plink/pscp on PATH)
@@ -28,7 +26,7 @@ param(
     [string]$LocalBinary = ''  # carve TTFs from this xochitl; skip SSH if set alone
 )
 $ErrorActionPreference = 'Stop'
-$ScriptRev = '2026-07-22-fonts-zip-v4'
+$ScriptRev = '2026-07-22-install-me-v5'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -308,32 +306,45 @@ if (Test-Path $Fonts) {
     Write-Host ("fonts ~{0:N1} MB" -f ($bytes / 1MB))
 }
 
-# --- Pick notebook faces only → remarkable_onenote_fonts.zip ---
-# Needed for OneNote CSS: reMarkable Serif Small (L1/L2) + reMarkable Sans (L3+).
-# Convert any .woff2 → .ttf first (Windows cannot install woff2).
+# --- Copy valid notebook faces into install_me\ (no zip) ---
+# OneNote CSS: reMarkable Serif Small (L1/L2) + reMarkable Sans (L3+).
+# Convert woff2→real sfnt ttf first (clear flavor; Windows rejects woff-in-.ttf).
 Write-Host "convert woff2 → ttf (if any)..."
 $null = Convert-Woff2InTree -FontsRoot $Fonts
 
-$ZipPath = Join-Path $OutRoot 'remarkable_onenote_fonts.zip'
-$Stage = Join-Path $OutRoot 'share_fonts'
-if (Test-Path -LiteralPath $Stage) { Remove-Item -LiteralPath $Stage -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $Stage | Out-Null
+function Test-SfntFile {
+    param([Parameter(Mandatory)][string]$Path)
+    try {
+        $fs = [System.IO.File]::OpenRead($Path)
+        try {
+            $buf = New-Object byte[] 4
+            if ($fs.Read($buf, 0, 4) -ne 4) { return $false }
+        } finally { $fs.Close() }
+        $hex = ($buf | ForEach-Object { $_.ToString('x2') }) -join ''
+        # 00010000 trueType, 4f54544f OTTO, 74727565 true, 74797031 typ1
+        return $hex -in @('00010000', '4f54544f', '74727565', '74797031')
+    } catch { return $false }
+}
+
+$InstallMe = Join-Path $OutRoot 'install_me'
+if (Test-Path -LiteralPath $InstallMe) { Remove-Item -LiteralPath $InstallMe -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $InstallMe | Out-Null
 
 $allFontFiles = @()
 if (Test-Path -LiteralPath $Fonts) {
     $allFontFiles = @(Get-ChildItem -LiteralPath $Fonts -Recurse -File -ErrorAction SilentlyContinue)
 }
 $serifTtf = @($allFontFiles | Where-Object {
-    ($_.Name -like 'reMarkableSerifSmall*' -or $_.Name -like 'reMarkableSerif.*' -or $_.Name -eq 'reMarkableSerif.ttf') -and
+    ($_.Name -like 'reMarkableSerifSmall*' -or $_.Name -eq 'reMarkableSerif.ttf' -or $_.Name -eq 'reMarkableSerif.otf') -and
     ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
 })
 $sansTtf = @($allFontFiles | Where-Object {
-    ($_.Name -like 'reMarkableSans*' ) -and
-    ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
+    ($_.Name -like 'reMarkableSans*') -and
+    ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf') -and
+    ($_.Name -notlike '*.woff*')
 })
 $needed = @($serifTtf + $sansTtf)
-# de-dupe by name (prefer carved paths: sort so carved_from_xochitl first)
-$needed = @($needed | Sort-Object { if ($_.FullName -match 'carved') { 0 } else { 1 } }, Name)
+$needed = @($needed | Sort-Object { if ($_.FullName -match 'carved') { 0 } elseif ($_.FullName -match 'converted') { 1 } else { 2 } }, Name)
 $seen = @{}
 $needed = @($needed | Where-Object {
     if (-not $_ -or $seen.ContainsKey($_.Name)) { return $false }
@@ -341,26 +352,37 @@ $needed = @($needed | Where-Object {
     $true
 })
 
-if ($needed.Count -eq 0) {
-    Write-Warning "no reMarkable Serif / Sans ttf/otf found under $Fonts — zip skipped"
-    Write-Host "names present:"
-    $allFontFiles | Select-Object -First 40 Name | ForEach-Object { Write-Host ("  " + $_.Name) }
-} else {
-    $lines = @(
-        "remarkable_onenote_fonts  rev=$ScriptRev"
-        "Install on Windows: select *.ttf/*.otf → right-click → Install for all users."
-        "OneNote CSS expects families: 'reMarkable Serif Small' and 'reMarkable Sans'."
-        "woff2 were converted to ttf when present (Windows cannot install woff2)."
-        "Do not commit this zip to a public repo (proprietary)."
-        ""
-    )
-    foreach ($f in $needed) {
-        Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $Stage $f.Name) -Force
-        $lines += ("{0}  {1} bytes  from {2}" -f $f.Name, $f.Length, $f.FullName)
-        Write-Host ("  pack {0}" -f $f.Name)
+$copied = 0
+$lines = @(
+    "install_me  rev=$ScriptRev"
+    "Select all *.ttf → right-click → Install for all users."
+    "OneNote CSS expects: 'reMarkable Serif Small' and 'reMarkable Sans'."
+    ""
+)
+foreach ($f in $needed) {
+    if (-not (Test-SfntFile -Path $f.FullName)) {
+        Write-Warning ("skip not-sfnt: {0}" -f $f.FullName)
+        continue
     }
-    $lines -join "`n" | Set-Content -Encoding utf8 (Join-Path $Stage 'INSTALL.txt')
-    if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
-    Compress-Archive -Path (Join-Path $Stage '*') -DestinationPath $ZipPath -Force
-    Write-Host ("zip -> {0}  ({1} files, {2:N1} KB)" -f $ZipPath, $needed.Count, ((Get-Item $ZipPath).Length / 1KB))
+    Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $InstallMe $f.Name) -Force
+    $lines += ("{0}  {1} bytes  from {2}" -f $f.Name, $f.Length, $f.FullName)
+    Write-Host ("  install_me\{0}" -f $f.Name)
+    $copied++
+}
+$lines -join "`n" | Set-Content -Encoding utf8 (Join-Path $InstallMe 'INSTALL.txt')
+
+if ($copied -eq 0) {
+    Write-Warning "no valid reMarkable Serif/Sans TTF in $InstallMe"
+    Write-Host "names under fonts\:"
+    $allFontFiles | Select-Object -First 50 Name | ForEach-Object { Write-Host ("  " + $_.Name) }
+} else {
+    Write-Host ("OK -> {0}  ({1} fonts)" -f $InstallMe, $copied)
+    try { explorer.exe $InstallMe } catch {}
+}
+
+# drop stale zip from older script revs
+$staleZip = Join-Path $OutRoot 'remarkable_onenote_fonts.zip'
+if (Test-Path -LiteralPath $staleZip) {
+    Remove-Item -LiteralPath $staleZip -Force -ErrorAction SilentlyContinue
+    Write-Host "removed stale zip $staleZip"
 }

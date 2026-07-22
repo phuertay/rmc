@@ -21,7 +21,13 @@ def convert(src: Path, dst: Path | None = None) -> Path:
     if dst is None:
         dst = src.with_suffix(".ttf")
     font = TTFont(str(src))
+    # Without this, save() keeps woff2 packaging → Windows "not a valid font".
+    font.flavor = None
     font.save(str(dst))
+    raw = dst.read_bytes()[:4]
+    if raw not in (b"\x00\x01\x00\x00", b"OTTO", b"true", b"typ1"):
+        dst.unlink(missing_ok=True)
+        raise SystemExit(f"converted file not sfnt (magic={raw!r}): {src}")
     return dst
 
 

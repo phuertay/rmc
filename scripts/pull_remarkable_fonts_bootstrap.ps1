@@ -1,14 +1,11 @@
-# Download font-pull scripts from GitHub and run them (writes remarkable_onenote_fonts.zip).
+# Download font-pull scripts from GitHub and run them.
+# Writes %USERPROFILE%\tmp\device_fonts\install_me\ with installable .ttf files.
 #
 # Expects $env:RM_PASS already set (tablet SSH). Needs PuTTY plink+pscp on PATH.
 #
 #   irm https://raw.githubusercontent.com/phuertay/rmc/cursor/ink-align-nudge-78e2/scripts/pull_remarkable_fonts_bootstrap.ps1 | iex
 #
-# Optional:
-#   $env:RM_HOST = '10.11.99.1'
-#   $env:RM_OUT  = "$env:USERPROFILE\tmp\device_fonts"
-#   $env:RM_BRANCH = 'cursor/ink-align-nudge-78e2'
-#   $env:RM_XOCHITL = 'C:\path\to\xochitl'   # skip SSH; carve only
+# Optional: $env:RM_HOST, $env:RM_OUT, $env:RM_BRANCH, $env:RM_XOCHITL
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 
@@ -47,11 +44,10 @@ if ($LocalBinary) {
 } else {
     & $pull -OutDir $OutDir
 }
-$zip = Join-Path $OutDir 'remarkable_onenote_fonts.zip'
-if (Test-Path -LiteralPath $zip) {
-    Write-Host "OK zip -> $zip"
-    explorer.exe /select,"$zip"
+$install = Join-Path $OutDir 'install_me'
+if ((Test-Path -LiteralPath $install) -and @(Get-ChildItem $install -Filter *.ttf -EA SilentlyContinue).Count -gt 0) {
+    Write-Host "OK fonts -> $install"
+    explorer.exe $install
 } else {
-    Write-Warning "zip missing — carve found no reMarkableSerifSmall/Sans under $OutDir\fonts"
-    Write-Host "Carve-only retry: `$env:RM_XOCHITL='C:\path\to\xochitl'; irm …bootstrap.ps1 | iex"
+    Write-Warning "no valid TTFs in $install — check carve/convert logs above"
 }
