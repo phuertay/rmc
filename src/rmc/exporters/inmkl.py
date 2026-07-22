@@ -80,12 +80,12 @@ _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = 0  # default / HEADING (b87e-DX-6of7)
+INK_EXTRA_DX_CSS = -4  # b87e-inkDXfine-3of6
 # Per-style ink DX (CSS px). L2 slightly off with shared DX — ladder next.
-INK_EXTRA_DX_HEADING_CSS = 0
-INK_EXTRA_DX_BOLD_CSS = 0  # first BOLD (L2); b87e-L2DX-4of7
-INK_EXTRA_DX_SECOND_BOLD_CSS = 0
-INK_EXTRA_DX_PLAIN_CSS = 0
+INK_EXTRA_DX_HEADING_CSS = -4
+INK_EXTRA_DX_BOLD_CSS = -4  # first BOLD (L2)
+INK_EXTRA_DX_SECOND_BOLD_CSS = -4
+INK_EXTRA_DX_PLAIN_CSS = -4
 # No HTML page nudge. Ink-only per-style DY (step3b inkDY ladder):
 # L1→4of5 (+4), L4→3of5 (0); L2/L3 linear between.
 PAGE_NUDGE_DY_CSS = 0
@@ -299,6 +299,8 @@ def html_text_origin_css(
     left += TEXT_NUDGE_DX_CSS
     top += TEXT_NUDGE_DY_CSS
     first_bold = style == si.ParagraphStyle.BOLD and bold_ordinal == 1
+    if style != si.ParagraphStyle.HEADING:
+        top += TEXT_NUDGE_DY_L234_CSS
     if style == si.ParagraphStyle.HEADING or first_bold:
         top -= ONENOTE_P_MARGIN_PX
         # Real serif face: box still low vs title — lower text (+8 vs prior +2).
@@ -350,6 +352,8 @@ TEXT_NUDGE_DY_HEADING_CSS = 0
 # All typed HTML: +CSS px (negative = left / up).
 TEXT_NUDGE_DX_CSS = -60  # b87e_textDX-60
 TEXT_NUDGE_DY_CSS = -28  # b87e-textDY-5of6
+# L2–L4 only: +CSS px lowers typed text (~one BOLD line = 30 CSS).
+TEXT_NUDGE_DY_L234_CSS = 0
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2

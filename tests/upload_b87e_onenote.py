@@ -105,6 +105,12 @@ def main() -> int:
         default=None,
         help="all typed HTML top nudge CSS px (− up)",
     )
+    ap.add_argument(
+        "--text-dy-l234",
+        type=float,
+        default=None,
+        help="L2–L4 HTML top nudge CSS px (+ lowers)",
+    )
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
@@ -144,6 +150,8 @@ def main() -> int:
         inmkl.TEXT_NUDGE_DX_CSS = args.text_dx
     if args.text_dy is not None:
         inmkl.TEXT_NUDGE_DY_CSS = args.text_dy
+    if args.text_dy_l234 is not None:
+        inmkl.TEXT_NUDGE_DY_L234_CSS = args.text_dy_l234
     if args.ink_dx is not None:
         d = args.ink_dx
         inmkl.INK_EXTRA_DX_CSS = d
