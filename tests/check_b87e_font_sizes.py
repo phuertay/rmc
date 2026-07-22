@@ -110,6 +110,7 @@ def main() -> None:
     # Installed Windows names (webui VF); Style.qml uses Serif Small / Sans.
     assert html.count("reMarkable Serif VF") >= 2
     assert html.count("reMarkable Sans VF") >= 2
+    assert html.count("font-weight:bold") >= 2  # L2 + L3 are ParagraphStyle.BOLD
     assert "This would be the third" in html
     third = html.split("This would be the third")[0].rsplit("font-family:", 1)[-1]
     assert third.startswith("reMarkable Sans VF"), third[:60]

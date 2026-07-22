@@ -25,6 +25,7 @@ from rmc.exporters.inmkl import (
     RM_PER_INK,
     html_text_origin_css,
     inkml_to_css,
+    prepare_ink_scales,
     rm_delta_to_css,
     rm_to_css,
     rm_to_inkml,
@@ -104,6 +105,7 @@ def check_text_y_matches_ink_anchors(path: Path) -> None:
     assert text is not None
     anchors = build_anchor_pos(text)
     set_page_origin(get_bounding_box(tree.root, anchors))
+    prepare_ink_scales(tree)
     doc = TextDocument.from_scene_item(text)
     _, html = _export(path)
     tops = [round(t, 2) for t in _abs_tops(html)]
@@ -147,6 +149,7 @@ def check_ink_text_same_origin(path: Path) -> None:
     assert text is not None
     anchors = build_anchor_pos(text)
     set_page_origin(get_bounding_box(tree.root, anchors))
+    prepare_ink_scales(tree)
     xml, html = _export(path)
     tops = _abs_tops(html)
     assert tops, html

@@ -87,6 +87,12 @@ def main() -> int:
         default=None,
         help="page-wide ink DX CSS px for all styles (− left)",
     )
+    ap.add_argument(
+        "--l1-text-dy",
+        type=float,
+        default=None,
+        help="HEADING HTML top nudge CSS px (+ lowers text)",
+    )
     ap.add_argument("--tag", default="b87e")
     args = ap.parse_args()
 
@@ -120,6 +126,8 @@ def main() -> int:
         inmkl.FONT_SIZE_SECOND_BOLD = args.second_bold
     if args.l2_text_dy is not None:
         inmkl.TEXT_NUDGE_DY_BOLD1_CSS = args.l2_text_dy
+    if args.l1_text_dy is not None:
+        inmkl.TEXT_NUDGE_DY_HEADING_CSS = args.l1_text_dy
     if args.ink_dx is not None:
         d = args.ink_dx
         inmkl.INK_EXTRA_DX_CSS = d
@@ -190,6 +198,9 @@ def main() -> int:
     print("status", r.status_code)
     if not r.ok:
         print(r.text[:1200], file=sys.stderr)
+        if r.status_code in (401, 403) and TOKEN_CACHE.is_file():
+            TOKEN_CACHE.unlink(missing_ok=True)
+            print("cleared stale /tmp/onenote_token.env — paste a fresh token", file=sys.stderr)
         return 1
     page = r.json()
     print("page id:", page.get("id"))

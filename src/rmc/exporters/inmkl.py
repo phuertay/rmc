@@ -19,9 +19,10 @@ Coordinate system (one pipeline for ink and typed text)
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
    so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
-6. Ink uses one page-wide INK_SCALE about each group's left edge + mid-Y
-   (handwriting size must stay consistent). HTML font sizes absorb the
-   remaining box/glyph mismatch. Per-style DX/DY nudges only.
+6. Ink uses one page-wide INK_SCALE: SX about each group's left edge,
+   SY about the typed-block mid-Y (same pivot for HTML text Y). Per-group
+   mid-Y was crushing L2–L4 gaps when S>1. Fonts absorb remaining size
+   mismatch. Per-style DX/DY nudges only.
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -105,6 +106,8 @@ XML_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 min_x = min_y = max_x = max_y = 0
 # Fallback center when no per-group scale (page content mid).
 _ink_cx = _ink_cy = 0.0
+# Typed-block mid-Y for SY + HTML Y (set in prepare_ink_scales).
+_ink_sy_cy = 0.0
 # (y_rm, sx, sy, dx_css, dy_css) for nearest-text lookup; set in prepare_ink_scales.
 _ink_scale_ys: List[Tuple[float, float, float, float, float]] = []
 trace_id = 1
@@ -149,15 +152,17 @@ def rm_ink_extra_dy_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int
 
 
 def prepare_ink_scales(tree: SceneTree) -> None:
-    """Map each typed paragraph Y → (sx, sy, dx_css, dy_css)."""
-    global _ink_scale_ys
+    """Map each typed paragraph Y → (sx, sy, dx_css, dy_css); set SY pivot."""
+    global _ink_scale_ys, _ink_sy_cy
     _ink_scale_ys = []
     text = tree.root_text
     if text is None:
+        _ink_sy_cy = _ink_cy
         return
     doc = TextDocument.from_scene_item(text)
     ypos = text.pos_y + TEXT_TOP_Y
     bold_n = 0
+    text_ys: List[float] = []
     for p in doc.contents:
         if str(p).strip():
             st = p.style.value
@@ -165,6 +170,7 @@ def prepare_ink_scales(tree: SceneTree) -> None:
             if st == si.ParagraphStyle.BOLD:
                 bold_n += 1
                 bold_ord = bold_n
+            text_ys.append(ypos)
             _ink_scale_ys.append(
                 (
                     ypos,
@@ -175,6 +181,14 @@ def prepare_ink_scales(tree: SceneTree) -> None:
                 )
             )
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
+    _ink_sy_cy = (sum(text_ys) / len(text_ys)) if text_ys else _ink_cy
+
+
+def scale_rm_y(y: float) -> float:
+    """RM Y through page-wide INK_SCALE about typed-block mid (matches ink SY)."""
+    if INK_SCALE == 1.0:
+        return y
+    return _ink_sy_cy + (y - _ink_sy_cy) * INK_SCALE
 
 
 def nearest_ink_params(y_rm: float) -> Tuple[float, float, float, float]:
@@ -208,13 +222,13 @@ def rm_to_inkml_stroke(
     scale_y: float | None = None,
     scale: float | None = None,
 ) -> Tuple[int, int]:
-    """RM point → InkML; anisotropic scale about left edge + mid-Y."""
+    """RM point → InkML; SX about left edge, SY about typed-block mid-Y."""
     sx = INK_SCALE if scale_x is None else scale_x
     sy = INK_SCALE if scale_y is None else scale_y
     if scale is not None and scale_x is None and scale_y is None:
         sx = sy = scale
     ox = _ink_cx if cx is None else cx
-    oy = _ink_cy if cy is None else cy
+    oy = _ink_sy_cy if cy is None else cy
     if sx != 1.0:
         x = (x - ox) * sx + ox
     if sy != 1.0:
@@ -256,14 +270,17 @@ def html_text_origin_css(
     RM/SVG Y is a baseline; HTML top is the line-box top. Large serif lines
     (HEADING + first BOLD) need a raise for OneNote's <p> 5.5pt margin plus
     partial ascent so ink is not above the glyphs (bd4c554f / b87e L2raise-3).
+    Y is scaled about typed-block mid (same SY pivot as ink) so gaps grow with S.
     """
-    left, top = rm_to_css(rm_x, rm_y)
+    left, top = rm_to_css(rm_x, scale_rm_y(rm_y))
     first_bold = style == si.ParagraphStyle.BOLD and bold_ordinal == 1
     if style == si.ParagraphStyle.HEADING or first_bold:
         top -= ONENOTE_P_MARGIN_PX
         # Real serif face: box still low vs title — lower text (+8 vs prior +2).
         # ponytail: leave global ink (al_medio OK on desktop).
         top -= round(rm_font_size_css(style, bold_ordinal=bold_ordinal) * TEXT_ASCENT_RATIO) - 8
+        if style == si.ParagraphStyle.HEADING:
+            top += TEXT_NUDGE_DY_HEADING_CSS
         if first_bold:
             top += TEXT_NUDGE_DY_BOLD1_CSS
     return left, float(round(top))
@@ -301,6 +318,8 @@ ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 TEXT_ASCENT_RATIO = 0.35
 # First-BOLD only: +CSS px lowers HTML text (L2 was high vs ink after H32/S1.55).
 TEXT_NUDGE_DY_BOLD1_CSS = 6  # b87e-L2dy-4of5
+# HEADING only: +CSS px lowers L1 text.
+TEXT_NUDGE_DY_HEADING_CSS = 0
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
@@ -357,6 +376,8 @@ def _run_span_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
         f"font-size:{_fmt_pt(rm_font_size_pt(style, bold_ordinal=bold_ordinal))}",
         f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
+    if style == si.ParagraphStyle.BOLD:
+        parts.append("font-weight:bold")
     if style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
         parts.append("padding-left:1.2em")
     return ";".join(parts)
@@ -415,14 +436,10 @@ def tree_to_xml(tree: SceneTree, output):
 
 
 def _group_scale_pivot(lines: list, move_pos: Tuple[float, float]) -> Tuple[float, float]:
-    """Scale pivot: left edge (SX) + vertical mid (SY)."""
+    """Scale pivot: group left edge (SX) + typed-block mid-Y (SY)."""
     mx, my = move_pos
-    xs, ys = [], []
-    for line in lines:
-        for pt in line.points:
-            xs.append(pt.x + mx)
-            ys.append(pt.y + my)
-    return min(xs), 0.5 * (min(ys) + max(ys))
+    xs = [pt.x + mx for line in lines for pt in line.points]
+    return min(xs), _ink_sy_cy
 
 
 def draw_tree(item: si.Group, output, anchor_pos, move_pos=(0, 0)):
@@ -541,6 +558,7 @@ def tree_to_html(tree: SceneTree, output):
     text = tree.root_text
     anchor_pos = build_anchor_pos(tree.root_text)
     set_page_origin(get_bounding_box(tree.root, anchor_pos))
+    prepare_ink_scales(tree)
 
     page_title = Path(output.name).stem
     # Typography on absolute divs (not <p>) — Graph rewrites p margins to 5.5pt.
