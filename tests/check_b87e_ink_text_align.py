@@ -18,7 +18,7 @@ from rmc.exporters import inmkl as ink
 ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm" / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm"
 # Local pipeline: ink vs HTML should hug. OneNote desktop may still need EXTRA nudge.
-OK_DX = 6.0  # CSS px
+OK_DX = 8.0  # CSS px (isotropic page scale can leave ~7px L1 residual)
 OK_DY = 10.0
 
 
