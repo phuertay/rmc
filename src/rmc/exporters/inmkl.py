@@ -297,6 +297,7 @@ def html_text_origin_css(
     """
     left, top = rm_to_css(rm_x, rm_y)
     left += TEXT_NUDGE_DX_CSS
+    top += TEXT_NUDGE_DY_CSS
     first_bold = style == si.ParagraphStyle.BOLD and bold_ordinal == 1
     if style == si.ParagraphStyle.HEADING or first_bold:
         top -= ONENOTE_P_MARGIN_PX
@@ -346,8 +347,9 @@ TEXT_ASCENT_RATIO = 0.35
 TEXT_NUDGE_DY_BOLD1_CSS = 6  # b87e-L2dy-4of5
 # HEADING only: +CSS px lowers L1 text.
 TEXT_NUDGE_DY_HEADING_CSS = 0
-# All typed HTML: +CSS px (negative = left). ~width of "This" at L1 32pt (~2em).
-TEXT_NUDGE_DX_CSS = -86
+# All typed HTML: +CSS px (negative = left / up).
+TEXT_NUDGE_DX_CSS = -60  # b87e_textDX-60
+TEXT_NUDGE_DY_CSS = 0  # ladder: up ~ L1 "s" x-height (~22 CSS @ 32pt)
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
