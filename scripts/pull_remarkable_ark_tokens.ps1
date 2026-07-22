@@ -84,7 +84,11 @@ if ($LocalOnly) {
         throw "LocalBinary not found: $LocalBinary"
     }
     Write-Host "-> local-only  binary=$LocalBinary  out=$OutRoot"
-    Copy-Item -LiteralPath $LocalBinary -Destination $xoLocal -Force
+    $srcFull = [System.IO.Path]::GetFullPath($LocalBinary)
+    $dstFull = [System.IO.Path]::GetFullPath($xoLocal)
+    if ($srcFull -ne $dstFull) {
+        Copy-Item -LiteralPath $LocalBinary -Destination $xoLocal -Force
+    }
     "local-only $($LocalBinary) size=$((Get-Item -LiteralPath $xoLocal).Length)" |
         Set-Content -Encoding utf8 (Join-Path $Meta 'device.txt')
 } else {
