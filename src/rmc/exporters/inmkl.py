@@ -305,6 +305,8 @@ def html_text_origin_css(
         style == si.ParagraphStyle.BOLD and bold_ordinal > 1
     ):
         top += TEXT_NUDGE_DY_L34_CSS
+    if style == si.ParagraphStyle.PLAIN:
+        top += TEXT_NUDGE_DY_L4_CSS
     if style == si.ParagraphStyle.HEADING or first_bold:
         top -= ONENOTE_P_MARGIN_PX
         # Real serif face: box still low vs title — lower text (+8 vs prior +2).
@@ -359,7 +361,9 @@ TEXT_NUDGE_DY_CSS = -28  # b87e-textDY-5of6
 # L2–L4 only: +CSS px lowers typed text (~one BOLD line = 30 CSS).
 TEXT_NUDGE_DY_L234_CSS = 30  # b87e-L234dy-4of6
 # L3–L4 only: extra +CSS px (more space below L2).
-TEXT_NUDGE_DY_L34_CSS = 0
+TEXT_NUDGE_DY_L34_CSS = 15  # b87e-L34dy-3of6
+# L4 only: extra +CSS px.
+TEXT_NUDGE_DY_L4_CSS = 0
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
