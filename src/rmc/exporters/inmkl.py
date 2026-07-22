@@ -245,20 +245,26 @@ def rm_to_css(x: float, y: float) -> Tuple[float, float]:
 
 
 def html_text_origin_css(
-    rm_x: float, rm_y: float, style: si.ParagraphStyle
+    rm_x: float,
+    rm_y: float,
+    style: si.ParagraphStyle,
+    *,
+    bold_ordinal: int = 1,
 ) -> Tuple[float, float]:
     """CSS left/top for a text run.
 
-    RM/SVG Y is a baseline; HTML top is the line-box top. HEADING needs a
-    partial raise so ink neither sits on the glyph bottoms nor clips the tops
-    (bd4c554f). Plain @11pt already matches al_medio — leave it.
+    RM/SVG Y is a baseline; HTML top is the line-box top. Large serif lines
+    (HEADING + first BOLD) need a raise for OneNote's <p> 5.5pt margin plus
+    partial ascent so ink is not above the glyphs (bd4c554f / b87e L2raise-3).
     """
     left, top = rm_to_css(rm_x, rm_y)
-    if style == si.ParagraphStyle.HEADING:
+    if style == si.ParagraphStyle.HEADING or (
+        style == si.ParagraphStyle.BOLD and bold_ordinal == 1
+    ):
         top -= ONENOTE_P_MARGIN_PX
         # Real EB Garamond: box still low vs title — lower text (+8 vs prior +2).
         # ponytail: leave global ink (al_medio OK on desktop).
-        top -= round(rm_font_size_css(style) * TEXT_ASCENT_RATIO) - 8
+        top -= round(rm_font_size_css(style, bold_ordinal=bold_ordinal) * TEXT_ASCENT_RATIO) - 8
     return left, float(round(top))
 
 
@@ -547,7 +553,9 @@ def tree_to_html(tree: SceneTree, output):
             if st == si.ParagraphStyle.BOLD:
                 bold_n += 1
                 bold_ord = bold_n
-            left, top = html_text_origin_css(text.pos_x, abs_y, st)
+            left, top = html_text_origin_css(
+                text.pos_x, abs_y, st, bold_ordinal=bold_ord
+            )
             inner = _emit_run_inner([p for p, _y in run], bold_ordinal=bold_ord)
             output.write(
                 f"""
