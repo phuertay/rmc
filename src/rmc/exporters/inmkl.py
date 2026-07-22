@@ -19,10 +19,11 @@ Coordinate system (one pipeline for ink and typed text)
    not SVG's draw_text slot bottom — otherwise type sits one LINE_HEIGHT below ink.
 5. HEADING HTML top is shifted up by OneNote's <p> 5.5pt margin plus ~font ascent
    so the glyph baseline lands on the RM anchor (large titles otherwise sit on ink).
-6. Ink + HTML share one page-wide INK_SCALE about the content-bbox
-   mid (isotropic). Gaps/spaces scale with the page — not per-group
-   left/mid pivots. Fonts absorb remaining box/glyph mismatch.
-   Per-style DX/DY nudges only.
+6. Ink is one rigid body: isotropic INK_SCALE about the ink-content
+   bbox mid (all strokes together — gaps inside ink scale with S).
+   HTML typed text stays on unscaled RM anchors (device spacing) so ink
+   size/placement can be calibrated against type. Fonts absorb remaining
+   glyph mismatch. Per-style DX/DY nudges only.
 
 Pads (48, 120) CSS px match OneNote defaults below the title; stored in himetric.
 """
@@ -152,7 +153,7 @@ def rm_ink_extra_dy_css_for_style(style: si.ParagraphStyle, *, bold_ordinal: int
 
 
 def prepare_ink_scales(tree: SceneTree) -> None:
-    """Map typed Y → nudges; set isotropic scale pivot (content bbox mid)."""
+    """Map typed Y → nudges; set ink rigid-body scale pivot (ink bbox mid)."""
     global _ink_scale_ys, _scale_cx, _scale_cy
     _ink_scale_ys = []
     text = tree.root_text
@@ -169,8 +170,6 @@ def prepare_ink_scales(tree: SceneTree) -> None:
                 if st == si.ParagraphStyle.BOLD:
                     bold_n += 1
                     bold_ord = bold_n
-                xs.append(float(text.pos_x))
-                ys.append(ypos)
                 _ink_scale_ys.append(
                     (
                         ypos,
@@ -198,6 +197,7 @@ def prepare_ink_scales(tree: SceneTree) -> None:
 
         _collect(tree.root)
     if xs and ys:
+        # Ink-only mid — whole handwriting block zooms as one piece.
         _scale_cx = 0.5 * (min(xs) + max(xs))
         _scale_cy = 0.5 * (min(ys) + max(ys))
     else:
@@ -205,7 +205,7 @@ def prepare_ink_scales(tree: SceneTree) -> None:
 
 
 def scale_rm_point(x: float, y: float) -> Tuple[float, float]:
-    """RM point through page-wide INK_SCALE about content mid (ink + HTML)."""
+    """RM point through ink rigid-body INK_SCALE about ink-content mid."""
     if INK_SCALE == 1.0:
         return x, y
     return (
@@ -245,7 +245,7 @@ def rm_to_inkml_stroke(
     scale_y: float | None = None,
     scale: float | None = None,
 ) -> Tuple[int, int]:
-    """RM point → InkML; isotropic INK_SCALE about content mid."""
+    """RM point → InkML; ink rigid-body INK_SCALE about ink-content mid."""
     sx = INK_SCALE if scale_x is None else scale_x
     sy = INK_SCALE if scale_y is None else scale_y
     if scale is not None and scale_x is None and scale_y is None:
@@ -293,11 +293,9 @@ def html_text_origin_css(
     RM/SVG Y is a baseline; HTML top is the line-box top. Large serif lines
     (HEADING + first BOLD) need a raise for OneNote's <p> 5.5pt margin plus
     partial ascent so ink is not above the glyphs (bd4c554f / b87e L2raise-3).
-    XY scaled about content mid (same isotropic pivot as ink) so page gaps
-    grow with INK_SCALE.
+    Text stays on unscaled RM anchors (device spacing); ink zooms as one body.
     """
-    sx, sy = scale_rm_point(rm_x, rm_y)
-    left, top = rm_to_css(sx, sy)
+    left, top = rm_to_css(rm_x, rm_y)
     first_bold = style == si.ParagraphStyle.BOLD and bold_ordinal == 1
     if style == si.ParagraphStyle.HEADING or first_bold:
         top -= ONENOTE_P_MARGIN_PX
@@ -463,7 +461,7 @@ def tree_to_xml(tree: SceneTree, output):
 
 
 def _group_scale_pivot(lines: list, move_pos: Tuple[float, float]) -> Tuple[float, float]:
-    """Scale pivot: content-bbox mid (page-wide isotropic; ignores group)."""
+    """Scale pivot: ink-content mid (whole handwriting block; ignores group)."""
     return _scale_cx, _scale_cy
 
 
@@ -594,7 +592,7 @@ def tree_to_html(tree: SceneTree, output):
     <body data-absolute-enabled="true" style="font-family:{FONT_FAMILY_SANS};font-size:{_fmt_pt(rm_font_size_pt(si.ParagraphStyle.PLAIN))}">""")
     if text is not None:
         doc = TextDocument.from_scene_item(text)
-        width_px = rm_delta_to_css(float(text.width) * INK_SCALE)
+        width_px = rm_delta_to_css(float(text.width))
         bold_n = 0
         for run in _text_runs(doc, text.pos_y):
             p0, abs_y = run[0]
