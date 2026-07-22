@@ -8,7 +8,6 @@ L3/L4 plain ladder above prior style #5; B2 = 18/16 × plain.
 """
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
