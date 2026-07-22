@@ -148,4 +148,20 @@ if ((Test-Path $xoLocal) -and (Test-Cmd 'python')) {
 Write-Host "done -> $OutRoot"
 Get-ChildItem $Meta | Select-Object Name, Length
 if (Test-Path $Ext) { Get-ChildItem $Ext -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize }
-Write-Host "Zip and share: $OutRoot"
+
+# Upload tip: NEVER zip bin/xochitl (tens of MB). Share only small text dumps.
+$zipHint = Join-Path $OutRoot 'UPLOAD_THESE.txt'
+@(
+    'Upload ONLY these folders (text, small):'
+    "  $Meta"
+    "  $Ext   (only if python carve ran)"
+    ''
+    'Do NOT upload:'
+    "  $Bin   (xochitl binary — too big; keep local)"
+    ''
+    'If carve skipped, meta/ alone is enough for cloud agent.'
+    'Re-run with -SkipBinary to skip scp of xochitl next time.'
+) | Set-Content -Encoding utf8 $zipHint
+Write-Host ""
+Write-Host "SHARE: zip meta\ (+ extracted\ if present). SKIP bin\."
+Write-Host "hint file: $zipHint"
