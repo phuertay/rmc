@@ -101,7 +101,7 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "34.13pt" in html and "24.1pt" in html and "19.12pt" in html and "17pt" in html, html
+    assert "33.63pt" in html and "24.83pt" in html and "19.42pt" in html and "16.5pt" in html, html
     assert "position:absolute" in html
     # Installed Windows names (webui VF); Style.qml uses Serif Small / Sans.
     assert html.count("reMarkable Serif VF") >= 2

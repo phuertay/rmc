@@ -16,7 +16,8 @@ from rmc.exporters import inmkl as ink
 ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm" / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm"
 
-LOCK_H, LOCK_B1, LOCK_B2, LOCK_P = 34.13, 24.1, 19.12, 17.0
+LOCK_H, LOCK_B1, LOCK_B2, LOCK_P = 33.63, 24.83, 19.42, 16.5
+LOCK_S = 1.6356
 OK = 0.02  # pt
 
 
@@ -47,8 +48,8 @@ def main() -> None:
     if any(abs(g - w) > OK for g, w in zip(got, want)):
         print(f"FAIL: want {want} got {got}")
         sys.exit(1)
-    if any(abs(S - ink.INK_SCALE) > 1e-6 for _l, _p, S, _st, _bo in lines):
-        print("FAIL: ink scale must be page-wide")
+    if any(abs(S - LOCK_S) > 1e-4 for _l, _p, S, _st, _bo in lines):
+        print(f"FAIL: ink scale want {LOCK_S} got {[S for _l,_p,S,_st,_bo in lines]}")
         sys.exit(1)
     print(f"ok: fonts locked {'/'.join(f'{x:g}' for x in got)}; INK_SCALE={ink.INK_SCALE}")
 

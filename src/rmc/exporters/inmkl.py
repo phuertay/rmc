@@ -56,7 +56,7 @@ RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # Ink-only size vs HTML type. One page-wide scale (handwriting must match).
 # step1-calibS 20260721-230817: L1 mid 3↔4, L2 mid 2↔3 → page S = avg.
-INK_SCALE = 1.5875
+INK_SCALE = 1.6356  # mean of per-line fine-ladder picks (L1:1.66 L2:1.5875 L3:1.61 L4:1.685)
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -283,17 +283,18 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # VF OneNote picks: L1/L2 mid style #3–#4; L3/L4 = L34-ladder #2.
-    si.ParagraphStyle.HEADING: 34.13,
-    si.ParagraphStyle.BOLD: 24.1,
-    si.ParagraphStyle.PLAIN: 17.0,
-    si.ParagraphStyle.BULLET: 17.0,
-    si.ParagraphStyle.BULLET2: 17.0,
-    si.ParagraphStyle.CHECKBOX: 17.0,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 17.0,
+    # VF: fonts absorb per-line inkS picks (page-wide S locked).
+    # F' = F * S_lock / S_pref  (fine ladder: L1#4 L2#1 L3#2 L4#5).
+    si.ParagraphStyle.HEADING: 33.63,
+    si.ParagraphStyle.BOLD: 24.83,
+    si.ParagraphStyle.PLAIN: 16.5,
+    si.ParagraphStyle.BULLET: 16.5,
+    si.ParagraphStyle.BULLET2: 16.5,
+    si.ParagraphStyle.CHECKBOX: 16.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 16.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 19.12  # L34-ladder #2
+FONT_SIZE_SECOND_BOLD = 19.42
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
