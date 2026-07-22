@@ -19,6 +19,8 @@ param(
     [switch]$SkipBinary   # remote strings only; skip multi‑MB scp of xochitl
 )
 $ErrorActionPreference = 'Stop'
+# bump when share/zip logic changes — printed so stale downloads are obvious
+$ScriptRev = '2026-07-22-rcc-share-nocopy'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -82,13 +84,10 @@ if ($LocalOnly) {
     if (-not (Test-Path -LiteralPath $LocalBinary)) {
         throw "LocalBinary not found: $LocalBinary"
     }
-    Write-Host "-> local-only  binary=$LocalBinary  out=$OutRoot"
-    $srcFull = [System.IO.Path]::GetFullPath($LocalBinary)
-    $dstFull = [System.IO.Path]::GetFullPath($xoLocal)
-    if ($srcFull -ne $dstFull) {
-        Copy-Item -LiteralPath $LocalBinary -Destination $xoLocal -Force
-    }
-    "local-only $($LocalBinary) size=$((Get-Item -LiteralPath $xoLocal).Length)" |
+    # Use the given path as-is — never Copy-Item onto itself.
+    $xoLocal = (Resolve-Path -LiteralPath $LocalBinary).Path
+    Write-Host "-> local-only  binary=$xoLocal  out=$OutRoot"
+    "local-only $xoLocal size=$((Get-Item -LiteralPath $xoLocal).Length)" |
         Set-Content -Encoding utf8 (Join-Path $Meta 'device.txt')
 } else {
     if ($UsePass) {
