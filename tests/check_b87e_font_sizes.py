@@ -109,11 +109,11 @@ def main() -> None:
     assert "position:absolute" in html
     # Installed Windows names (webui VF); Style.qml uses Serif Small / Sans.
     assert html.count("reMarkable Serif VF") >= 2
-    assert html.count("reMarkable Sans VF") >= 2
-    assert html.count("font-weight:bold") >= 2  # L2 + L3 are ParagraphStyle.BOLD
+    assert "reMarkable Sans VF Medium" in html
+    assert "font-weight:bold" not in html
     assert "This would be the third" in html
     third = html.split("This would be the third")[0].rsplit("font-family:", 1)[-1]
-    assert third.startswith("reMarkable Sans VF"), third[:60]
+    assert third.startswith("reMarkable Sans VF Medium"), third[:60]
     second = html.split("Then this is the second")[0].rsplit("font-family:", 1)[-1]
     assert second.startswith("reMarkable Serif VF"), second[:60]
 

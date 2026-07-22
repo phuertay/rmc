@@ -297,8 +297,10 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
 
 # Windows-installed family names from device webui woff2 → ttf (variable faces).
 # Style.qml says "reMarkable Serif Small" / "reMarkable Sans"; installed Name table
-# is "reMarkable Serif VF" / "reMarkable Sans VF". OneNote matches the installed name.
+# is "reMarkable Serif VF" / "reMarkable Sans VF" (+ Medium face for Bold style).
+# OneNote matches the installed name — no CSS font-weight (L3 is Medium face).
 FONT_FAMILY_SANS = "reMarkable Sans VF"
+FONT_FAMILY_SANS_MEDIUM = "reMarkable Sans VF Medium"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
     # H32 ladder; L2 (first BOLD) → 23 from H32-inkS pick.
@@ -347,12 +349,14 @@ def rm_font_size_css(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> floa
 
 
 def _font_family(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
-    # Device: L1 HEADING + L2 first BOLD → Serif Small; L3+ → Sans.
-    # (.rm stores L2/L3 both as BOLD.)
+    # Device: L1 HEADING → Serif; L2 first BOLD → Serif; L3 Bold style → Sans Medium;
+    # L4+ → Sans. (.rm stores L2/L3 both as BOLD; not CSS font-weight.)
     if style == si.ParagraphStyle.HEADING:
         return FONT_FAMILY_SERIF
     if style == si.ParagraphStyle.BOLD and bold_ordinal == 1:
         return FONT_FAMILY_SERIF
+    if style == si.ParagraphStyle.BOLD and bold_ordinal > 1:
+        return FONT_FAMILY_SANS_MEDIUM
     return FONT_FAMILY_SANS
 
 
@@ -376,8 +380,6 @@ def _run_span_style(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> str:
         f"font-size:{_fmt_pt(rm_font_size_pt(style, bold_ordinal=bold_ordinal))}",
         f"line-height:{TEXT_LINE_HEIGHT_EM}",
     ]
-    if style == si.ParagraphStyle.BOLD:
-        parts.append("font-weight:bold")
     if style in (si.ParagraphStyle.BULLET, si.ParagraphStyle.BULLET2):
         parts.append("padding-left:1.2em")
     return ";".join(parts)
