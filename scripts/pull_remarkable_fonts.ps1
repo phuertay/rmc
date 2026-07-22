@@ -2,7 +2,7 @@
 #
 # Run from a PC that can reach the tablet (USB 10.11.99.1 or Wi-Fi IP):
 #   .\scripts\pull_remarkable_fonts.ps1
-#   $env:RM_HOST='192.168.1.50'; $env:RM_PASS='your-ssh-password'; .\scripts\pull_remarkable_fonts.ps1
+#   $env:RM_HOST='192.168.1.50'; $env:RM_PASS='…'; .\scripts\pull_remarkable_fonts.ps1
 #
 # Password (pick one):
 #   $env:RM_PASS = '...'          # non-interactive (needs PuTTY plink/pscp on PATH)
@@ -14,13 +14,14 @@
 #Requires -Version 5.1
 [CmdletBinding()]
 param(
-    [string]$Password = $env:RM_PASS
+    [string]$Password = $env:RM_PASS,
+    [string]$OutDir = $env:RM_OUT
 )
 $ErrorActionPreference = 'Stop'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
-$OutRoot  = if ($env:RM_OUT)  { $env:RM_OUT }  else { 'tests/expected/device_fonts' }
+$OutRoot  = if ($OutDir) { $OutDir } else { 'tests/expected/device_fonts' }
 $Target   = "${User}@${HostName}"
 $SshOpts  = @('-o', 'StrictHostKeyChecking=accept-new', '-o', 'ConnectTimeout=8')
 $UsePass  = -not [string]::IsNullOrEmpty($Password)
@@ -39,25 +40,34 @@ or set up an SSH key (recommended).
     }
 }
 
+# Soft: return stdout even when remote exit != 0 (BusyBox find often exits 1).
 function Invoke-RmSsh {
-    param([Parameter(Mandatory)][string]$RemoteCommand)
+    param(
+        [Parameter(Mandatory)][string]$RemoteCommand,
+        [switch]$Strict
+    )
     if ($UsePass) {
-        # -batch: no interactive prompts; accept host key via echo y once if needed
         $out = & plink -batch -ssh $Target -pw $Password $RemoteCommand 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            # first connect: accept host key then retry
+        $code = $LASTEXITCODE
+        if ($code -ne 0) {
             $null = cmd /c "echo y| plink -ssh $Target -pw `"$Password`" exit" 2>&1
             $out = & plink -batch -ssh $Target -pw $Password $RemoteCommand 2>&1
+            $code = $LASTEXITCODE
         }
-        if ($LASTEXITCODE -ne 0) {
-            throw "plink failed ($LASTEXITCODE): $RemoteCommand`n$out"
+        # plink wraps remote stderr into the stream; keep text lines
+        $text = @($out | ForEach-Object { "$_" }) -join "`n"
+        if ($Strict -and $code -ne 0) {
+            throw "plink failed ($code): $RemoteCommand`n$text"
         }
-        $out
+        return $text
     } else {
-        & ssh @SshOpts $Target $RemoteCommand
-        if ($LASTEXITCODE -ne 0) {
-            throw "ssh failed ($LASTEXITCODE): $RemoteCommand"
+        $out = & ssh @SshOpts $Target $RemoteCommand 2>&1
+        $code = $LASTEXITCODE
+        $text = @($out | ForEach-Object { "$_" }) -join "`n"
+        if ($Strict -and $code -ne 0) {
+            throw "ssh failed ($code): $RemoteCommand`n$text"
         }
+        return $text
     }
 }
 
@@ -68,7 +78,6 @@ function Invoke-RmScp {
         [switch]$Recurse
     )
     if ($UsePass) {
-        # pscp remote syntax: user@host:path
         $pscpArgs = @('-batch', '-pw', $Password)
         if ($Recurse) { $pscpArgs += '-r' }
         $pscpArgs += @($Source, $Destination)
@@ -87,10 +96,15 @@ function Invoke-RmScp {
     }
 }
 
-# Resolve OUT relative to repo root if script lives in scripts/
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+# Resolve OUT: -OutDir / RM_OUT, else next to script if not in a repo, else repo-relative
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot = Split-Path -Parent $ScriptDir
 if (-not [System.IO.Path]::IsPathRooted($OutRoot)) {
-    $OutRoot = Join-Path $RepoRoot $OutRoot
+    if ((Split-Path -Leaf $ScriptDir) -eq 'scripts' -and (Test-Path (Join-Path $RepoRoot '.git'))) {
+        $OutRoot = Join-Path $RepoRoot $OutRoot
+    } else {
+        $OutRoot = Join-Path $ScriptDir 'device_fonts'
+    }
 }
 
 $Meta = Join-Path $OutRoot 'meta'
@@ -100,8 +114,8 @@ New-Item -ItemType Directory -Force -Path $Meta, $Fonts, $FcOut | Out-Null
 
 Write-Host "-> $Target  out=$OutRoot  auth=$(if ($UsePass) { 'RM_PASS/plink' } else { 'ssh key or prompt' })"
 
-# Device identity
-Invoke-RmSsh 'uname -a; cat /etc/os-release 2>/dev/null | head -5; ls /usr/bin/xochitl 2>/dev/null; which fc-list fc-match 2>/dev/null' |
+# Device identity (BusyBox: head -n, not head -5)
+Invoke-RmSsh -Strict 'uname -a; head -n 5 /etc/os-release 2>/dev/null; ls /usr/bin/xochitl 2>/dev/null; which fc-list fc-match 2>/dev/null' |
     Tee-Object -FilePath (Join-Path $Meta 'device.txt') | Out-Host
 
 # Font inventory
@@ -117,40 +131,46 @@ done
 Invoke-RmSsh $fcMatchRemote |
     Out-File -Encoding utf8 (Join-Path $Meta 'fc-match.txt')
 
-# fontconfig index + copy
-Invoke-RmSsh 'ls -la /etc/fonts /usr/share/fontconfig 2>/dev/null; find /etc/fonts /usr/share/fontconfig -type f 2>/dev/null | head -200' |
+# fontconfig index + copy (no trailing "/." — pscp rejects '.' / '..' path segments)
+Invoke-RmSsh 'ls -la /etc/fonts /usr/share/fontconfig 2>/dev/null; find /etc/fonts /usr/share/fontconfig -type f 2>/dev/null | head -n 200' |
     Out-File -Encoding utf8 (Join-Path $Meta 'fontconfig-index.txt')
 try {
-    Invoke-RmScp -Recurse -Source "${Target}:/etc/fonts/." -Destination $FcOut
+    Invoke-RmScp -Recurse -Source "${Target}:/etc/fonts" -Destination $FcOut
 } catch {
     Write-Warning "scp /etc/fonts failed: $_"
 }
 
 # Font file list + download each
+# Quote find expr for plink; tolerate exit 1 when some roots are missing.
+$findFonts = 'find /usr/share/fonts /home/root/.local/share/fonts /usr/lib/fonts -type f \( -name "*.ttf" -o -name "*.otf" -o -name "*.ttc" \) 2>/dev/null; true'
 $fontListPath = Join-Path $Meta 'font-files.txt'
-Invoke-RmSsh 'find /usr/share/fonts /home/root/.local/share/fonts /usr/lib/fonts -type f \( -name "*.ttf" -o -name "*.otf" -o -name "*.ttc" \) 2>/dev/null' |
-    Out-File -Encoding utf8 $fontListPath
+$fontList = Invoke-RmSsh $findFonts
+$fontList | Out-File -Encoding utf8 $fontListPath
 
-Get-Content $fontListPath | ForEach-Object {
-    $remote = $_.Trim()
-    if (-not $remote) { return }
+$paths = @($fontList -split "`n" | ForEach-Object { $_.Trim() } | Where-Object {
+    $_ -and ($_ -match '\.(ttf|otf|ttc)$')
+})
+Write-Host ("found {0} font files" -f $paths.Count)
+
+foreach ($remote in $paths) {
     $base = Split-Path -Leaf $remote
     $dirKey = ((Split-Path -Parent $remote) -replace '/', '_')
     $destDir = Join-Path $Fonts $dirKey
     New-Item -ItemType Directory -Force -Path $destDir | Out-Null
     try {
         Invoke-RmScp -Source "${Target}:$remote" -Destination (Join-Path $destDir $base)
+        Write-Host "  got $base"
     } catch {
         Write-Warning "skip $remote : $_"
     }
 }
 
-# xochitl font-related strings
-Invoke-RmSsh 'strings /usr/bin/xochitl 2>/dev/null | egrep -i "garamond|noto|heading|font.?size|FontSize|pointSize|textStyle|ParagraphStyle|EBGaramond" | sort -u | head -400' |
+# xochitl font-related strings (BusyBox: head -n)
+Invoke-RmSsh 'strings /usr/bin/xochitl 2>/dev/null | egrep -i "garamond|noto|heading|font.?size|FontSize|pointSize|textStyle|ParagraphStyle|EBGaramond" | sort -u | head -n 400; true' |
     Out-File -Encoding utf8 (Join-Path $Meta 'xochitl-font-strings.txt')
 
 # packages
-Invoke-RmSsh 'opkg list-installed 2>/dev/null | egrep -i "font|freetype|harfbuzz|qt" | head -80' |
+Invoke-RmSsh 'opkg list-installed 2>/dev/null | egrep -i "font|freetype|harfbuzz|qt" | head -n 80; true' |
     Out-File -Encoding utf8 (Join-Path $Meta 'opkg-fonts-qt.txt')
 
 Write-Host "done -> $OutRoot"

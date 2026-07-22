@@ -34,7 +34,7 @@ scp_cmd() {
 mkdir -p "$OUT"/{fonts,fontconfig,meta}
 echo "→ $USER@$HOST  out=$OUT"
 
-ssh_cmd 'uname -a; cat /etc/os-release 2>/dev/null | head -5; ls /usr/bin/xochitl 2>/dev/null; which fc-list fc-match 2>/dev/null' \
+ssh_cmd 'uname -a; head -n 5 /etc/os-release 2>/dev/null; ls /usr/bin/xochitl 2>/dev/null; which fc-list fc-match 2>/dev/null' \
   | tee "$OUT/meta/device.txt"
 
 # Font inventory (what xochitl actually resolves)
@@ -45,17 +45,19 @@ ssh_cmd 'for f in "EB Garamond" "Noto Sans" "Noto Serif" "Noto Sans Mono" serif 
 done' >"$OUT/meta/fc-match.txt" || true
 
 # fontconfig
-ssh_cmd 'ls -la /etc/fonts /usr/share/fontconfig 2>/dev/null; find /etc/fonts /usr/share/fontconfig -type f 2>/dev/null | head -200' \
+ssh_cmd 'ls -la /etc/fonts /usr/share/fontconfig 2>/dev/null; find /etc/fonts /usr/share/fontconfig -type f 2>/dev/null | head -n 200' \
   >"$OUT/meta/fontconfig-index.txt" || true
-mkdir -p "$OUT/fontconfig"
-scp_cmd -r "$USER@$HOST:/etc/fonts/." "$OUT/fontconfig/etc-fonts/" 2>/dev/null || true
+mkdir -p "$OUT/fontconfig/etc-fonts"
+# no trailing "/." — some scp clients reject '.' path segments
+scp_cmd -r "$USER@$HOST:/etc/fonts" "$OUT/fontconfig/etc-fonts/" 2>/dev/null || true
 
 # Font files (common locations on remarkable OS)
-ssh_cmd 'find /usr/share/fonts /home/root/.local/share/fonts /usr/lib/fonts -type f \( -name "*.ttf" -o -name "*.otf" -o -name "*.ttc" \) 2>/dev/null' \
+ssh_cmd 'find /usr/share/fonts /home/root/.local/share/fonts /usr/lib/fonts -type f \( -name "*.ttf" -o -name "*.otf" -o -name "*.ttc" \) 2>/dev/null; true' \
   >"$OUT/meta/font-files.txt" || true
 
 while IFS= read -r remote; do
   [[ -z "$remote" ]] && continue
+  [[ "$remote" != *.ttf && "$remote" != *.otf && "$remote" != *.ttc ]] && continue
   base=$(basename "$remote")
   dir=$(dirname "$remote" | tr '/' '_')
   mkdir -p "$OUT/fonts/$dir"
@@ -63,11 +65,11 @@ while IFS= read -r remote; do
 done <"$OUT/meta/font-files.txt"
 
 # xochitl strings that look like style / pt / font size tables
-ssh_cmd 'strings /usr/bin/xochitl 2>/dev/null | egrep -i "garamond|noto|heading|font.?size|FontSize|pointSize|textStyle|ParagraphStyle|EBGaramond" | sort -u | head -400' \
+ssh_cmd 'strings /usr/bin/xochitl 2>/dev/null | egrep -i "garamond|noto|heading|font.?size|FontSize|pointSize|textStyle|ParagraphStyle|EBGaramond" | sort -u | head -n 400; true' \
   >"$OUT/meta/xochitl-font-strings.txt" || true
 
 # Package list (what else ships with text stack)
-ssh_cmd 'opkg list-installed 2>/dev/null | egrep -i "font|freetype|harfbuzz|qt" | head -80' \
+ssh_cmd 'opkg list-installed 2>/dev/null | egrep -i "font|freetype|harfbuzz|qt" | head -n 80; true' \
   >"$OUT/meta/opkg-fonts-qt.txt" || true
 
 echo "done → $OUT"
