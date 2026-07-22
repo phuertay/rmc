@@ -284,9 +284,9 @@ FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
     # VF: fonts absorb per-line inkS picks (page-wide S locked).
-    # F' = F * S_lock / S_pref  (fine ladder: L1#4 L2#1 L3#2 L4#5).
-    si.ParagraphStyle.HEADING: 33.63,
-    si.ParagraphStyle.BOLD: 24.83,
+    # F' = F * S_lock / S_pref, then snapped to 0.5pt (OneNote max precision).
+    si.ParagraphStyle.HEADING: 33.5,
+    si.ParagraphStyle.BOLD: 25.0,
     si.ParagraphStyle.PLAIN: 16.5,
     si.ParagraphStyle.BULLET: 16.5,
     si.ParagraphStyle.BULLET2: 16.5,
@@ -294,7 +294,7 @@ FONT_SIZE_PT = {
     si.ParagraphStyle.CHECKBOX_CHECKED: 16.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 19.42
+FONT_SIZE_SECOND_BOLD = 19.5
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING only (0.8 overshot above the ink box).
@@ -304,15 +304,20 @@ TEXT_ASCENT_RATIO = 0.35
 TEXT_LINE_HEIGHT_EM = 1.2
 
 
+def _snap_pt(pt: float) -> float:
+    """OneNote stores font-size at 0.5pt max precision."""
+    return round(pt * 2.0) / 2.0
+
+
 def rm_font_size_pt(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:
     if style == si.ParagraphStyle.BOLD and bold_ordinal > 1:
-        return FONT_SIZE_SECOND_BOLD
-    return FONT_SIZE_PT.get(style, 8.0)
+        return _snap_pt(FONT_SIZE_SECOND_BOLD)
+    return _snap_pt(FONT_SIZE_PT.get(style, 8.0))
 
 
 def _fmt_pt(pt: float) -> str:
-    """CSS font-size with optional half-point (OneNote accepts 10.5pt)."""
-    return f"{pt:g}pt"
+    """CSS font-size snapped to 0.5pt (OneNote max precision)."""
+    return f"{_snap_pt(pt):g}pt"
 
 
 def rm_font_size_css(style: si.ParagraphStyle, *, bold_ordinal: int = 1) -> float:

@@ -101,7 +101,11 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "33.63pt" in html and "24.83pt" in html and "19.42pt" in html and "16.5pt" in html, html
+    assert "33.5pt" in html and "25pt" in html and "19.5pt" in html and "16.5pt" in html, html
+    # OneNote max font precision is 0.5pt — emit path must snap.
+    from rmc.exporters.inmkl import _snap_pt
+
+    assert _snap_pt(33.63) == 33.5 and _snap_pt(24.83) == 25.0 and _snap_pt(19.42) == 19.5
     assert "position:absolute" in html
     # Installed Windows names (webui VF); Style.qml uses Serif Small / Sans.
     assert html.count("reMarkable Serif VF") >= 2
