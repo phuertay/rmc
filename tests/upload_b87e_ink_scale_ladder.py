@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Upload b87e INK_SCALE ladder (fonts locked at VF pick).
+"""Upload b87e INK_SCALE ladder (fonts locked; ink too large → step down).
 
-Fonts stay 34.13/24.1/19.12/17. Scale starts at current 1.5875 and goes up.
+Fonts stay 32/24/18.5/16. Coarse S from current lock downward.
 
   ONENOTE_TOKEN=… ONENOTE_SECTION=… poetry run python tests/upload_b87e_ink_scale_ladder.py
+
+Ink coords are int himetric → effective size step ~0.001–0.002 in S
+(1 himetric on glyph height). Eye ladders use ~0.05–0.1 coarse / ~0.01 fine.
 """
 from __future__ import annotations
 
@@ -15,10 +18,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 UPLOAD = ROOT / "upload_b87e_onenote.py"
 
-# locked VF fonts
-H, B1, B2, P = 34.13, 24.1, 19.12, 17.0
-# increase ink from current lock
-SCALES = (1.5875, 1.70, 1.85, 2.00, 2.15, 2.30)
+# locked H32 ladder
+H, B1, B2, P = 32.0, 24.0, 18.5, 16.0
+# current lock first, then smaller (ink too large)
+SCALES = (1.6356, 1.55, 1.45, 1.35, 1.25, 1.15)
 
 
 def main() -> int:
@@ -28,7 +31,7 @@ def main() -> int:
     n = len(SCALES)
     for i, S in enumerate(SCALES, 1):
         stag = str(S).replace(".", "p")
-        tag = f"b87e-VF-inkS-{i}of{n}-S{stag}"
+        tag = f"b87e-H32-inkS-{i}of{n}-S{stag}"
         title = f"{tag} fonts {H:g}/{B1:g}/{B2:g}/{P:g}"
         cmd = [
             sys.executable,
