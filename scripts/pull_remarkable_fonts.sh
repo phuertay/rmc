@@ -6,6 +6,7 @@
 #   RM_HOST=192.168.1.50 RM_PASS=… ./scripts/pull_remarkable_fonts.sh
 #
 # Needs: ssh, scp; sshpass if using RM_PASS. Enable SSH in tablet Settings.
+# Windows: see pull_remarkable_fonts.ps1
 set -euo pipefail
 
 HOST="${RM_HOST:-10.11.99.1}"
