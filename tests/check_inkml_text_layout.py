@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 
 from rmscene import read_tree
+from rmscene import scene_items as si
 from rmscene.scene_stream import simple_text_document, write_blocks
 from rmscene.text import TextDocument
 from rmc.exporters.inmkl import (
@@ -109,9 +110,17 @@ def check_text_y_matches_ink_anchors(path: Path) -> None:
 
     run_tops = []
     ypos = text.pos_y + TEXT_TOP_Y
+    bold_n = 0
     for p in doc.contents:
         if str(p).strip():
-            _l, top = html_text_origin_css(text.pos_x, ypos, p.style.value)
+            st = p.style.value
+            bold_ord = 1
+            if st == si.ParagraphStyle.BOLD:
+                bold_n += 1
+                bold_ord = bold_n
+            _l, top = html_text_origin_css(
+                text.pos_x, ypos, st, bold_ordinal=bold_ord
+            )
             run_tops.append(round(top, 2))
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
     assert tops == run_tops, f"{path.name}: html tops {tops} != anchor-based {run_tops}"
