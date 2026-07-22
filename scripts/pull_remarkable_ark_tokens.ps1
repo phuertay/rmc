@@ -20,7 +20,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 # bump when share/zip logic changes — printed so stale downloads are obvious
-$ScriptRev = '2026-07-22-rcc-shift-carve'
+$ScriptRev = '2026-07-22-rcc-diagnose-slices'
 
 $HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
 $User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
@@ -215,16 +215,21 @@ Get-ChildItem $Ext -Filter 'json_blob_*.json' -File -ErrorAction SilentlyContinu
 # RCC: summaries + text-like payloads only
 $Rcc = Join-Path $Ext 'rcc'
 if (Test-Path $Rcc) {
-    foreach ($name in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt', 'FAILED.txt')) {
+    foreach ($name in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt', 'FAILED.txt', 'DIAGNOSE.txt')) {
         Copy-ShareFile (Join-Path $Rcc $name) ("extracted\rcc\" + $name)
     }
     $textExt = @('.txt', '.json', '.qml', '.js', '.css', '.md', '.xml', '.html', '.qss', '.conf')
     Get-ChildItem $Rcc -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
         $rel = $_.FullName.Substring($Rcc.Length).TrimStart('\', '/')
-        if ($_.Name -in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt', 'FAILED.txt')) { return }
+        if ($_.Name -in @('SUMMARY.txt', 'typography_hits.txt', 'name_sections.txt', 'FAILED.txt', 'DIAGNOSE.txt')) { return }
+        if ($_.Length -gt 6MB) { return }
+        # allow binary slices
+        if ($_.Extension.ToLowerInvariant() -eq '.bin') {
+            Copy-ShareFile $_.FullName ("extracted\rcc\" + $rel)
+            return
+        }
         if ($_.Length -gt 512KB) { return }
         if ($textExt -notcontains $_.Extension.ToLowerInvariant() -and $_.Name -ne '_meta.txt') { return }
-        # skip obvious junk
         if ($rel -match '(^|[/\\])(icons?|images?|img)([/\\]|$)') { return }
         Copy-ShareFile $_.FullName ("extracted\rcc\" + $rel)
     }

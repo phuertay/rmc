@@ -14,6 +14,8 @@ import struct
 import zlib
 from pathlib import Path
 
+EXTRACTOR_REV = "2026-07-22-rcc-shift-carve-v2"
+
 FLAG_COMPRESSED = 0x01
 FLAG_DIRECTORY = 0x02
 FLAG_COMPRESSED_ZSTD = 0x04
@@ -495,6 +497,115 @@ def carve_compressed_text(data: bytes, out: Path) -> list[str]:
     return hits
 
 
+def diagnose_name_table(
+    data: bytes, nrange: range, names: dict[int, str], label: str
+) -> list[str]:
+    """Explain why tree matching fails for a name table."""
+    lines = [
+        f"## {label} names@0x{nrange.start:x}-0x{nrange.stop:x} count={len(names)}",
+        "names: " + ", ".join(("∅" if not n else n) for n in list(names.values())[:20]),
+    ]
+    root_candidates = []
+    for off, name in names.items():
+        if name in ("", "ark-imports", "ark", "qt", "tokens", "qml"):
+            root_candidates.append((off, name))
+    root_candidates += [(o, names[o]) for o in names if o not in {c[0] for c in root_candidates}]
+    root_candidates = root_candidates[:8]
+
+    for version in (3, 2, 1):
+        es = entry_size(version)
+        for name_off, name in root_candidates:
+            needle = struct.pack(">I", name_off)
+            needle_le = struct.pack("<I", name_off)
+            for endian, nd in (("BE", needle), ("LE", needle_le)):
+                positions = []
+                start = 0
+                while len(positions) < 30:
+                    i = data.find(nd, start)
+                    if i < 0:
+                        break
+                    positions.append(i)
+                    start = i + 1
+                dir_ok = 0
+                tree_ok = 0
+                fail_seen = []
+                for i in positions:
+                    if endian == "LE":
+                        continue  # only probe BE entries for full parse
+                    ent = read_entry(data, i, 0, version)
+                    if ent is None:
+                        continue
+                    noff, flags, a, _b = ent
+                    if noff != name_off or not (flags & FLAG_DIRECTORY):
+                        continue
+                    if not (1 <= a <= len(names) + 5):
+                        continue
+                    dir_ok += 1
+                    seen: set[int] = set()
+                    nodes = parse_tree(data, i, names, 0, 1, version, seen)
+                    if nodes is None:
+                        fail_seen.append(f"0x{i:x}:parse_fail flags={flags} children={a}")
+                        continue
+                    if len(seen) != len(names) and len(seen) < max(2, len(names) - 2):
+                        fail_seen.append(
+                            f"0x{i:x}:seen={len(seen)}/{len(names)} children={a}"
+                        )
+                        continue
+                    files = walk_files(nodes)
+                    if files:
+                        tree_ok += 1
+                        fail_seen.append(
+                            f"0x{i:x}:TREE_OK files={len(files)} seen={len(seen)}"
+                        )
+                lines.append(
+                    f"  v{version} root={name!r}@rel={name_off} {endian}: "
+                    f"hits={len(positions)} dir_ok={dir_ok} tree_ok={tree_ok}"
+                )
+                for fs in fail_seen[:8]:
+                    lines.append(f"    {fs}")
+    return lines
+
+
+def dump_focus_slices(data: bytes, sections: list, out: Path) -> list[str]:
+    """Write binary slices around ark-imports name tables for offline debug."""
+    slice_dir = out / "slices"
+    slice_dir.mkdir(parents=True, exist_ok=True)
+    written: list[str] = []
+    focuses = [
+        (r, names)
+        for r, names in sections
+        if "ark-imports" in " ".join(names.values()).lower()
+    ]
+    if not focuses:
+        return written
+    lo = min(r.start for r, _ in focuses) - 2_000_000
+    hi = max(r.stop for r, _ in focuses) + 2_000_000
+    lo = max(0, lo)
+    hi = min(len(data), hi)
+    path = slice_dir / f"around_ark_imports_{lo:x}_{hi:x}.bin"
+    path.write_bytes(data[lo:hi])
+    meta = slice_dir / "SLICES.txt"
+    meta.write_text(
+        "\n".join(
+            [
+                f"extractor={EXTRACTOR_REV}",
+                f"file_size={len(data)}",
+                f"slice={path.name} file_off=0x{lo:x}-0x{hi:x} len={hi-lo}",
+                "sections:",
+                *[
+                    f"  0x{r.start:x}-0x{r.stop:x} ({len(n)}): "
+                    + ", ".join(("∅" if not x else x) for x in list(n.values())[:15])
+                    for r, n in focuses
+                ],
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    written.extend([path.name, meta.name])
+    return written
+
+
 def extract_all(
     data: bytes,
     out: Path,
@@ -503,14 +614,17 @@ def extract_all(
 ) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     summary: dict = {
+        "extractor_rev": EXTRACTOR_REV,
         "qres_files": 0,
         "trees": 0,
         "files": 0,
         "interesting_trees": [],
         "failed_interesting": [],
         "carved": 0,
+        "slices": 0,
     }
     fail_lines: list[str] = []
+    diag_lines: list[str] = [f"extractor_rev={EXTRACTOR_REV}", f"file_size={len(data)}"]
 
     start = 0
     while True:
@@ -565,6 +679,10 @@ def extract_all(
                 )
                 fail_lines.append(msg)
                 summary["failed_interesting"].append(msg)
+                for vr, vn, vlabel in name_table_variants(nrange, names):
+                    diag_lines.extend(
+                        diagnose_name_table(data, vr, vn, f"{vlabel}")
+                    )
             continue
         version, tree_base, files = found
         blob_base = infer_blob_base(
@@ -625,6 +743,9 @@ def extract_all(
     carved = carve_compressed_text(data, out)
     summary["carved"] = len(carved)
 
+    slices = dump_focus_slices(data, sections, out)
+    summary["slices"] = len(slices)
+
     hits: list[str] = []
     for p in out.rglob("*"):
         if not p.is_file() or p.name.startswith("_"):
@@ -671,6 +792,8 @@ def extract_all(
     summary["typography_hits"] = len(hits)
     if fail_lines:
         (out / "FAILED.txt").write_text("\n".join(fail_lines) + "\n", encoding="utf-8")
+    if len(diag_lines) > 2:
+        (out / "DIAGNOSE.txt").write_text("\n".join(diag_lines) + "\n", encoding="utf-8")
     (out / "SUMMARY.txt").write_text(
         "\n".join(f"{k}: {v}" for k, v in summary.items()) + "\n", encoding="utf-8"
     )
@@ -758,8 +881,12 @@ def main() -> int:
         prefer_interesting=not args.all,
         focus=focus,
     )
+    print(f"extractor_rev={EXTRACTOR_REV}")
     print(f"trees={summary['trees']} files={summary['files']} qres_files={summary['qres_files']}")
-    print(f"typography_hits={summary['typography_hits']} carved={summary.get('carved', 0)}")
+    print(
+        f"typography_hits={summary['typography_hits']} "
+        f"carved={summary.get('carved', 0)} slices={summary.get('slices', 0)}"
+    )
     print(f"interesting: {summary['interesting_trees']}")
     if summary.get("failed_interesting"):
         print(f"failed: {summary['failed_interesting']}")
