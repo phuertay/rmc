@@ -1,7 +1,7 @@
-"""b87e: uniform ink scale + fonts sized to scaled boxes.
+"""b87e: uniform ink scale + fonts sized to device PDF glyphs.
 
-Ink is one page-wide INK_SCALE. Fonts must fill scaled box heights.
-Device glyph/box ideal_S may still differ by line — that is expected.
+Ink is one page-wide INK_SCALE. Font pt ≈ glyph_pt × INK_SCALE (glyph
+proportions from device PDF). Ink boxes are padded; box/font > 1 is OK.
 
 Run: poetry run python tests/check_b87e_ink_font_scale.py
 """
@@ -29,8 +29,8 @@ PDF_CANDIDATES = [
     ROOT / "expected" / "b87e_device_render.pdf",
 ]
 PT_PER_RM = 72 / 226
-# L2–L4 track PDF glyph ratios (smaller than padded ink boxes).
-OK_LO, OK_HI = 0.85, 1.45
+# font_pt should match glyph_pt × INK_SCALE
+OK_LO, OK_HI = 0.90, 1.10
 
 
 def _path_points(s: str):
@@ -112,19 +112,21 @@ def main() -> None:
     lines = _typed_lines(tree)
     assert len(glyphs) == len(boxes_rm) == len(lines) == 4
 
-    print("line                          glyph  box_pt  ideal_S  S_used  box/font")
+    print("line                          glyph  box_pt  target  font_pt  font/target  box/font")
     bad = []
     scales = []
     for (label, font_pt, S, _st, _bo), g, h_rm in zip(lines, glyphs, boxes_rm):
         box_pt = h_rm * PT_PER_RM
-        ideal = g / box_pt
-        after = (box_pt * S) / font_pt
+        target = g * S
+        ratio = font_pt / target
+        box_over = (box_pt * S) / font_pt
         scales.append(S)
-        flag = "" if OK_LO <= after <= OK_HI else " <--"
+        flag = "" if OK_LO <= ratio <= OK_HI else " <--"
         if flag:
             bad.append(label[:20])
         print(
-            f"{label[:28]:28} {g:6.2f} {box_pt:7.2f} {ideal:8.2f} {S:7.3f} {after:8.2f}{flag}"
+            f"{label[:28]:28} {g:6.2f} {box_pt:7.2f} {target:7.2f} {font_pt:8.2f} "
+            f"{ratio:10.2f} {box_over:8.2f}{flag}"
         )
 
     print(f"\nscales={scales}; uniform INK_SCALE={ink.INK_SCALE}")
@@ -132,9 +134,9 @@ def main() -> None:
         print("FAIL: ink scale must be page-wide (all lines == INK_SCALE).")
         sys.exit(1)
     if bad:
-        print(f"FAIL: box/font out of [{OK_LO},{OK_HI}] — retune FONT_SIZE_*: {bad}")
+        print(f"FAIL: font/target out of [{OK_LO},{OK_HI}] — retune FONT_SIZE_*: {bad}")
         sys.exit(1)
-    print("ok: uniform ink scale; fonts fill scaled boxes")
+    print("ok: uniform ink scale; fonts track glyph × INK_SCALE")
 
 
 if __name__ == "__main__":
