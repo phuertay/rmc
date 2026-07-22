@@ -10,6 +10,7 @@ __pycache__/
 
 # Device-pulled proprietary fonts (never commit)
 tests/expected/device_fonts/
+remarkable_onenote_fonts.zip
 *.ttf
 *.otf
 *.woff
