@@ -14,7 +14,7 @@ import struct
 import zlib
 from pathlib import Path
 
-EXTRACTOR_REV = "2026-07-22-zstd-unique-blob"
+EXTRACTOR_REV = "2026-07-22-controls-near-names"
 
 FLAG_COMPRESSED = 0x01
 FLAG_DIRECTORY = 0x02
@@ -203,32 +203,33 @@ def find_tree_bases(
 ) -> list[tuple[int, int, list]]:
     """Locate tree by scanning for directory entries whose name_offset is in this table."""
     hits: list[tuple[int, int, list]] = []
+    # Trees often sit immediately after the name table (tokens/controls pattern).
+    windows = [
+        range(name_range.stop, min(len(data), name_range.stop + 4096)),
+        range(max(0, name_range.start - 2_000_000), name_range.start),
+        range(name_range.stop, min(len(data), name_range.stop + 2_000_000)),
+    ]
     if full_scan:
-        windows = [range(0, len(data))]
-    else:
-        windows = [
-            range(max(0, name_range.start - 2_000_000), name_range.start),
-            range(name_range.stop, min(len(data), name_range.stop + 2_000_000)),
-        ]
+        windows.append(range(0, len(data)))
 
-    # Prefer likely roots first (empty, ark-imports, qt, then others)
     preferred = []
     for off, name in names.items():
-        if name in ("", "ark-imports", "ark", "qt", "tokens", "qml"):
+        if name in ("", "ark-imports", "ark", "qt", "tokens", "qml", "controls"):
             preferred.append(off)
     root_candidates = preferred + [o for o in names if o not in preferred]
 
     for version in (3, 2, 1):
         es = entry_size(version)
         for name_off in root_candidates:
-            # match name_offset only; flags may include more than Directory
             needle = struct.pack(">I", name_off)
             for win in windows:
                 start = win.start
-                while True:
+                checked = 0
+                while checked < 5000:
                     i = data.find(needle, start, win.stop)
                     if i < 0:
                         break
+                    checked += 1
                     if i + es <= len(data):
                         ent = read_entry(data, i, 0, version)
                         if ent is not None:
