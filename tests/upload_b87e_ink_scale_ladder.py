@@ -13,6 +13,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -52,9 +53,14 @@ def main() -> int:
             str(P),
         ]
         print("===", title, "===")
-        r = subprocess.run(cmd, cwd=str(ROOT.parent))
-        if r.returncode != 0:
-            return r.returncode
+        for attempt in range(1, 4):
+            r = subprocess.run(cmd, cwd=str(ROOT.parent))
+            if r.returncode == 0:
+                break
+            if attempt == 3:
+                return r.returncode
+            time.sleep(2 * attempt)
+        time.sleep(1.5)
     print(f"done: {n} pages. Pick best ink scale Nof{n} (box vs typed text size).")
     return 0
 
