@@ -329,13 +329,21 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# Windows-installed family names from device webui woff2 → ttf (variable faces).
-# Style.qml says "reMarkable Serif Small" / "reMarkable Sans"; installed Name table
-# is "reMarkable Serif VF" / "reMarkable Sans VF" (+ Medium face for Bold style).
-# OneNote matches the installed name — no CSS font-weight (L3 is Medium face).
-FONT_FAMILY_SANS = "reMarkable Sans VF"
-FONT_FAMILY_SANS_MEDIUM = "reMarkable Sans VF Medium"
-FONT_FAMILY_SERIF = "reMarkable Serif VF"
+# Device faces first (VF Name table, then Style.qml aliases). Full fallback
+# chain from pre-single-family lock: serif → EB Garamond…; sans → Noto Sans….
+# OneNote often keeps only the first family when present; stack still helps
+# SVG/HTML and machines without RM TTFs. L3 = Medium face (no font-weight).
+FONT_FAMILY_SANS = (
+    "'reMarkable Sans VF','reMarkable Sans','Noto Sans','Segoe UI',Arial,sans-serif"
+)
+FONT_FAMILY_SANS_MEDIUM = (
+    "'reMarkable Sans VF Medium','reMarkable Sans VF','reMarkable Sans',"
+    "'Noto Sans','Segoe UI',Arial,sans-serif"
+)
+FONT_FAMILY_SERIF = (
+    "'reMarkable Serif VF','reMarkable Serif Small','EB Garamond',Garamond,"
+    "'Palatino Linotype',Palatino,Georgia,serif"
+)
 FONT_SIZE_PT = {
     # S=1.75; L3/L4 hand-locked 20 / 18.
     si.ParagraphStyle.HEADING: 36.0,
