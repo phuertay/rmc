@@ -329,15 +329,16 @@ def rm_line_height_css(style: si.ParagraphStyle) -> float:
     return rm_delta_to_css(float(LINE_HEIGHTS.get(style, 70)))
 
 
-# Device faces first (webui woff2 → ttf Name table). Fallbacks when missing:
-# serif → EB Garamond; sans / Medium → Noto Sans. OneNote often keeps only the
-# first family when present; stack still helps SVG/HTML and machines without RM TTFs.
-# L3 uses Medium face name — no CSS font-weight.
+# Device faces first (VF Name table, then Style.qml aliases). Full fallback
+# chain from pre-single-family lock: serif → EB Garamond…; sans → Noto Sans….
+# OneNote often keeps only the first family when present; stack still helps
+# SVG/HTML and machines without RM TTFs. L3 = Medium face (no font-weight).
 FONT_FAMILY_SANS = (
     "'reMarkable Sans VF','reMarkable Sans','Noto Sans','Segoe UI',Arial,sans-serif"
 )
 FONT_FAMILY_SANS_MEDIUM = (
-    "'reMarkable Sans VF Medium','Noto Sans','Segoe UI',Arial,sans-serif"
+    "'reMarkable Sans VF Medium','reMarkable Sans VF','reMarkable Sans',"
+    "'Noto Sans','Segoe UI',Arial,sans-serif"
 )
 FONT_FAMILY_SERIF = (
     "'reMarkable Serif VF','reMarkable Serif Small','EB Garamond',Garamond,"
