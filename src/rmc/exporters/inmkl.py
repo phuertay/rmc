@@ -337,17 +337,17 @@ FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SANS_MEDIUM = "reMarkable Sans VF Medium"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # S=1.75 from S=1.55 calib; L3/L4 mid 18/16.5 then ×1.75/1.55.
+    # S=1.75; L3/L4 hand-locked 20.5 / 18 (not ×scale from mid ladder).
     si.ParagraphStyle.HEADING: 36.0,
     si.ParagraphStyle.BOLD: 26.0,
-    si.ParagraphStyle.PLAIN: 18.5,
-    si.ParagraphStyle.BULLET: 18.5,
-    si.ParagraphStyle.BULLET2: 18.5,
-    si.ParagraphStyle.CHECKBOX: 18.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 18.5,
+    si.ParagraphStyle.PLAIN: 18.0,
+    si.ParagraphStyle.BULLET: 18.0,
+    si.ParagraphStyle.BULLET2: 18.0,
+    si.ParagraphStyle.CHECKBOX: 18.0,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 18.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 20.5  # L3 18 ×1.75/1.55
+FONT_SIZE_SECOND_BOLD = 20.5  # L3 locked
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
