@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Upload L3 text-down ladder at 17.5pt (L3-only +DY).
-
-Locked: L2down=8, L1=-2, L4=23, fonts …/17.5/…
+"""Upload fine L3 text-down ladder (1 CSS px steps @ 17.5pt).
 
   poetry run python tests/upload_b87e_l3_dy_ladder.py
 """
@@ -15,14 +13,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 UPLOAD = ROOT / "upload_b87e_onenote.py"
 
-NUDGES = (0, 4, 6, 8, 10, 12)
+# 1 CSS px steps (HTML tops are integers)
+NUDGES = (0, 1, 2, 3, 4, 5, 6, 7, 8)
 
 
 def main() -> int:
     n = len(NUDGES)
     for i, dy in enumerate(NUDGES, 1):
-        tag = f"b87e-L3down-{i}of{n}-dy{dy:g}"
-        title = f"{tag} font17.5 (+ lowers L3)"
+        tag = f"b87e-L3fine-{i}of{n}-dy{dy:g}"
+        title = f"{tag} font17.5 (+ lowers L3, 1px)"
         cmd = [
             sys.executable,
             str(UPLOAD),
@@ -60,7 +59,7 @@ def main() -> int:
                 return r.returncode
             time.sleep(2 * attempt)
         time.sleep(1.5)
-    print(f"done: {n} pages. Pick best L3down Nof{n} (+ = lower L3 @ 17.5pt).")
+    print(f"done: {n} pages. Pick best L3fine Nof{n} (+ = lower L3, 1 CSS px).")
     return 0
 
 
