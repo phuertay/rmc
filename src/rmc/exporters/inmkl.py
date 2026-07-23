@@ -58,7 +58,7 @@ RM_PER_INK = HIMETRIC_PER_INCH / SCREEN_DPI
 CSS_PER_HIMETRIC = CSS_DPI / HIMETRIC_PER_INCH  # 96/2540
 # Ink-only size vs HTML type. One page-wide scale (handwriting must match).
 # step1-calibS 20260721-230817: L1 mid 3↔4, L2 mid 2↔3 → page S = avg.
-INK_SCALE = 2.0  # try page scale-up from 1.55 (fonts+nudges ×2/1.55)
+INK_SCALE = 1.75  # back from S=2; ×1.75/1.55 from S=1.55 calib
 WIDTH_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 HEIGHT_CONV_CONSTANT = RM_PER_INK * INK_SCALE
 PRESSURE_CONV_CONSTANT = 128
@@ -80,17 +80,17 @@ _CSS_TICK = 250 * CSS_PER_HIMETRIC
 CSS_ALIGN_DX = -round(0.75 * _CSS_TICK)  # -7
 CSS_ALIGN_DY = -round(2.0 * _CSS_TICK)  # -19
 INK_ALIGN_DX = round(CSS_ALIGN_DX / CSS_PER_HIMETRIC)  # himetric, strokes only
-INK_EXTRA_DX_CSS = -5  # inkDXfine-3 (−4) ×2/1.55
+INK_EXTRA_DX_CSS = -5  # −4 ×1.75/1.55
 # Per-style ink DX (CSS px). L2 slightly off with shared DX — ladder next.
 INK_EXTRA_DX_HEADING_CSS = -5
 INK_EXTRA_DX_BOLD_CSS = -5  # first BOLD (L2)
 INK_EXTRA_DX_SECOND_BOLD_CSS = -5
 INK_EXTRA_DX_PLAIN_CSS = -5
-# No HTML page nudge. Ink-only per-style DY (scaled ×2/1.55 from S=1.55 lock).
+# No HTML page nudge. Ink-only per-style DY (×1.75/1.55 from S=1.55 lock).
 PAGE_NUDGE_DY_CSS = 0
 INK_EXTRA_DY_CSS = 0
 INK_EXTRA_DY_HEADING_CSS = 5
-INK_EXTRA_DY_BOLD_CSS = 3
+INK_EXTRA_DY_BOLD_CSS = 2
 INK_EXTRA_DY_SECOND_BOLD_CSS = 1
 INK_EXTRA_DY_PLAIN_CSS = 0
 INK_EXTRA_DX = round(INK_EXTRA_DX_CSS / CSS_PER_HIMETRIC)
@@ -337,30 +337,30 @@ FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SANS_MEDIUM = "reMarkable Sans VF Medium"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # S=2.0 from S=1.55 lock; L3/L4 mid L3pt#3–4 / L4pt#3–4 → 18/16.5 then ×2/1.55.
-    si.ParagraphStyle.HEADING: 41.5,
-    si.ParagraphStyle.BOLD: 29.5,
-    si.ParagraphStyle.PLAIN: 21.5,
-    si.ParagraphStyle.BULLET: 21.5,
-    si.ParagraphStyle.BULLET2: 21.5,
-    si.ParagraphStyle.CHECKBOX: 21.5,
-    si.ParagraphStyle.CHECKBOX_CHECKED: 21.5,
+    # S=1.75 from S=1.55 calib; L3/L4 mid 18/16.5 then ×1.75/1.55.
+    si.ParagraphStyle.HEADING: 36.0,
+    si.ParagraphStyle.BOLD: 26.0,
+    si.ParagraphStyle.PLAIN: 18.5,
+    si.ParagraphStyle.BULLET: 18.5,
+    si.ParagraphStyle.BULLET2: 18.5,
+    si.ParagraphStyle.CHECKBOX: 18.5,
+    si.ParagraphStyle.CHECKBOX_CHECKED: 18.5,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 23.0  # L3 mid 17.5↔18 → 18 ×2/1.55
+FONT_SIZE_SECOND_BOLD = 20.5  # L3 18 ×1.75/1.55
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
 TEXT_ASCENT_RATIO = 0.35
-# Nudges ×2/1.55 from S=1.55 calib (rounded CSS px).
-TEXT_NUDGE_DY_BOLD1_CSS = 10  # was 8
-TEXT_NUDGE_DY_HEADING_CSS = -3  # was -2
-TEXT_NUDGE_DX_CSS = -77  # was -60
-TEXT_NUDGE_DY_CSS = -36  # was -28
-TEXT_NUDGE_DY_L234_CSS = 39  # was 30
-TEXT_NUDGE_DY_L34_CSS = 19  # was 15
+# Nudges ×1.75/1.55 from S=1.55 calib (rounded CSS px).
+TEXT_NUDGE_DY_BOLD1_CSS = 9  # was 8
+TEXT_NUDGE_DY_HEADING_CSS = -2  # was -2
+TEXT_NUDGE_DX_CSS = -68  # was -60
+TEXT_NUDGE_DY_CSS = -32  # was -28
+TEXT_NUDGE_DY_L234_CSS = 34  # was 30
+TEXT_NUDGE_DY_L34_CSS = 17  # was 15
 TEXT_NUDGE_DY_L3_CSS = 6  # was 5
-TEXT_NUDGE_DY_L4_CSS = 30  # was 23
+TEXT_NUDGE_DY_L4_CSS = 26  # was 23
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2

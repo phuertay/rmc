@@ -101,11 +101,11 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "41.5pt" in html and "29.5pt" in html and "23pt" in html and "21.5pt" in html, html
+    assert "36pt" in html and "26pt" in html and "20.5pt" in html and "18.5pt" in html, html
     from rmc.exporters.inmkl import TEXT_NUDGE_DY_L3_CSS, INK_SCALE
 
     assert TEXT_NUDGE_DY_L3_CSS == 6
-    assert INK_SCALE == 2.0
+    assert INK_SCALE == 1.75
     # OneNote max font precision is 0.5pt — emit path must snap.
     from rmc.exporters.inmkl import _snap_pt
 
