@@ -1,0 +1,57 @@
+                Layout.maximumHeight: root.tokens.status.idle.typography.fontSize * root.tokens.status.idle.typography.lineHeight
+            pixelSize: root.typography.fontSize
+            spacing: Math.round(root.typography.fontSize * root.typography.lineHeight)/2
+        if (root.typography.lineHeight >= root.typography.fontSize) {
+        pixelSize: root.typography.fontSize
+        return Math.round(root.typography.fontSize * root.typography.lineHeight)
+    spacing: root.typography.fontSize/2
+'fontSize' must be a positive value
+(font:|font-size:)\s?([0-9]*[.])?[0-9]+px
+*N12_GLOBAL__N_122ParagraphStyleUserDataE
+*ZN15SceneController12setTextStyleEN5scene14CharacterStyle4TypeEEUlP5SceneE_
+*ZN15SceneController18createRootDocumentERKSt8optionalIN5scene14ParagraphStyleEES0_IdEEUlP5SceneE_
+*ZN20SceneCheckboxManagerC4EP5SceneP13SceneTextItemEUlN9__gnu_cxx17__normal_iteratorIPN6detail12CheckboxInfoESt6vectorIS7_SaIS7_EEEERKN5scene14ParagraphStyleEE_
+*ZN4crdt11FormatState13setStyleCountENS_9TextStyleEiEUlRiE_
+*ZN4crdt11FormatStatemIENS_9TextStyleEEUlRiE_
+*ZN4crdt11FormatStatepLENS_9TextStyleEEUlRiE_
+*ZNK15SceneController17setParagraphStyleERKN5scene14ParagraphStyleEN13SceneTextItem14IndentHandlingEEUlPK5SceneE_
+:NotoEmoji-Regular.ttf
+FN5scene14ParagraphStyleERK10QTextBlockE
+Format as title, subheading, body, list, or checkboxes.
+IfNotOpen
+N13TextFormatter7HeadingE
+PFN5scene14ParagraphStyleERK10QTextBlockE
+ParagraphStyle
+Subheading
+Subheading2
+Subheading2Style
+SubheadingStyle
+ZNK4crdt11FormatState10styleCountENS_9TextStyleEEUlRKiE_
+_ZNK5QFont9pointSizeEv
+addTextStyleWithPayload %d -> %d, style: %s, payload: %s
+addTextStyleWithPayload: no document focused
+addTextStyleWithPayload: no selection - abort
+crdt::TextProperties::FontSize
+cycleParagraphStyle
+font-size:\s*(\d+)(%)(?:;|\s)
+fontSize
+heading
+initalParagraphStyle
+loaded CSS in %.3fms, line-height=%d, em=%d, fontSize=%d, pt=%d, justify=%d
+paragraphStyle
+paragraphStyleChanged
+removeTextStyleWithPayload %d -> %d, style: %s
+removeTextStyleWithPayload: no document focused
+scene::ParagraphStyle
+scene::ParagraphStyle::Type
+setParagraphStyle
+setParagraphStyle: no document focused
+setTextStyle
+setTextStyle %d -> %d, style: %s, op: %s
+setTextStyle: no document focused
+setTextStyle: no selection - toggle cursor style 
+std::optional<scene::ParagraphStyle>
+textParagraphStyle
+textParagraphStyleChanged
+textStyles
+textStylesChanged

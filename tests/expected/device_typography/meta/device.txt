@@ -1,0 +1,6 @@
+Linux imx93-tatsu 6.12.49+git-imx93-tatsu-g68b95e858a0a #1 SMP PREEMPT Tue May 26 09:03:04 UTC 2026 aarch64 GNU/Linux
+ID=codex
+NAME="Codex Linux"
+VERSION="5.7.126 (scarthgap)"
+VERSION_ID=5.7.126
+VERSION_CODENAME="scarthgap"

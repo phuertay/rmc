@@ -1,0 +1,10 @@
+8306:TitleStyle
+8307:SubheadingStyle
+8308:Subheading2Style
+12485:Subheading2Style
+12486:SubheadingStyle
+12487:TitleStyle
+15731:(font:|font-size:)\s?([0-9]*[.])?[0-9]+px
+27555:font-size:\s*(\d+)(%)(?:;|\s)
+32091:        text: "Body Text"
+32118:        text: "Title Large"

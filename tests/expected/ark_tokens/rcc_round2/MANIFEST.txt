@@ -1,0 +1,28 @@
+ark_tokens share bundle
+created=2026-07-22T11:23:55.9081586-06:00
+file_count=21
+total_bytes=51329
+
+UPLOAD this zip to the cloud agent. bin/xochitl is NOT included.
+
+extracted\fontsize-lines.txt  100
+extracted\fontsize-numbers.txt  0
+extracted\json_blobs_index.txt  2
+extracted\qrc-ark-paths.txt  451
+extracted\token-strings.txt  4485
+extracted\rcc\name_sections.txt  20350
+extracted\rcc\SUMMARY.txt  79
+extracted\rcc\typography_hits.txt  21730
+extracted\rcc\tree_039_v3_c33cd0\_meta.txt  238
+extracted\rcc\tree_039_v3_c33cd0\qt\qt\qml\xofm\modules\compliance\qml\LicenseInformationWindow.qml  128
+extracted\rcc\tree_040_v3_c4af00\_meta.txt  219
+extracted\rcc\tree_042_v3_d7cf00\_meta.txt  205
+extracted\rcc\tree_086_v3_c37656\_meta.txt  137
+extracted\rcc\tree_087_v3_102f2c6\_meta.txt  130
+meta\ark-file-paths.txt  387
+meta\carve-log.txt  209
+meta\device.txt  68
+meta\qrc-ark-paths.txt  435
+meta\rcc-log.txt  183
+meta\xochitl-jsonish.txt  2
+meta\xochitl-token-strings.txt  1791

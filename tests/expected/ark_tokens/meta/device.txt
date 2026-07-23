@@ -1,0 +1,5 @@
+Linux imx93-tatsu 6.12.49+git-imx93-tatsu-g68b95e858a0a #1 SMP PREEMPT Tue May 26 09:03:04 UTC 2026 aarch64 GNU/Linux
+-rwxr-xr-x    1 root     root      22210328 Jun 12 08:58 /usr/bin/xochitl
+drwxr-xr-x    3 root     root          1024 Jun 12 08:58 .
+drwxr-xr-x    9 root     root          3072 Jun 12 08:58 ..
+drwxr-xr-x    2 root     root          1024 Jun 12 08:58 translations

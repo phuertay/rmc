@@ -14,14 +14,18 @@ from pathlib import Path
 import re
 
 from rmscene import read_tree
+from rmscene import scene_items as si
 from rmscene.scene_stream import simple_text_document, write_blocks
 from rmscene.text import TextDocument
 from rmc.exporters.inmkl import (
     CSS_ALIGN_DX,
     CSS_ALIGN_DY,
     CSS_PER_HIMETRIC,
+    PAGE_NUDGE_DY_CSS,
     RM_PER_INK,
+    html_text_origin_css,
     inkml_to_css,
+    prepare_ink_scales,
     rm_delta_to_css,
     rm_to_css,
     rm_to_inkml,
@@ -80,7 +84,7 @@ def check_pipeline_identity() -> None:
         ix, iy = rm_to_inkml(x, y)
         cx, cy = rm_to_css(x, y)
         assert abs(cx - (inkml_to_css(ix) + CSS_ALIGN_DX)) < 1e-6
-        assert abs(cy - (inkml_to_css(iy) + CSS_ALIGN_DY)) < 1e-6, (
+        assert abs(cy - (inkml_to_css(iy) + CSS_ALIGN_DY + PAGE_NUDGE_DY_CSS)) < 1e-6, (
             x, y, ix, iy, cx, cy
         )
         # 1 RM → ~RM_PER_INK himetric (int trunc) → ~96/226 CSS px (then round)
@@ -101,21 +105,25 @@ def check_text_y_matches_ink_anchors(path: Path) -> None:
     assert text is not None
     anchors = build_anchor_pos(text)
     set_page_origin(get_bounding_box(tree.root, anchors))
+    prepare_ink_scales(tree)
     doc = TextDocument.from_scene_item(text)
     _, html = _export(path)
     tops = [round(t, 2) for t in _abs_tops(html)]
 
     run_tops = []
     ypos = text.pos_y + TEXT_TOP_Y
-    in_run = False
+    bold_n = 0
     for p in doc.contents:
         if str(p).strip():
-            if not in_run:
-                _l, top = rm_to_css(text.pos_x, ypos)
-                run_tops.append(round(top, 2))
-                in_run = True
-        else:
-            in_run = False
+            st = p.style.value
+            bold_ord = 1
+            if st == si.ParagraphStyle.BOLD:
+                bold_n += 1
+                bold_ord = bold_n
+            _l, top = html_text_origin_css(
+                text.pos_x, ypos, st, bold_ordinal=bold_ord
+            )
+            run_tops.append(round(top, 2))
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
     assert tops == run_tops, f"{path.name}: html tops {tops} != anchor-based {run_tops}"
 
@@ -128,6 +136,9 @@ def check_text_ink_text_fields(path: Path) -> None:
     # Gap is in CSS px after himetric scale (~0.42× RM).
     assert tops[-1] - tops[0] >= 20, tops
     assert "This is typed" in html and "And this is typed again" in html
+    # No <p> — OneNote forces 5.5pt paragraph margins that shift glyphs.
+    assert "<p" not in html.lower(), html
+    assert "font-size:" in html and "line-height:" in html
 
 
 def check_ink_text_same_origin(path: Path) -> None:
@@ -138,6 +149,7 @@ def check_ink_text_same_origin(path: Path) -> None:
     assert text is not None
     anchors = build_anchor_pos(text)
     set_page_origin(get_bounding_box(tree.root, anchors))
+    prepare_ink_scales(tree)
     xml, html = _export(path)
     tops = _abs_tops(html)
     assert tops, html
@@ -147,7 +159,7 @@ def check_ink_text_same_origin(path: Path) -> None:
     ypos = text.pos_y + TEXT_TOP_Y
     for p in doc.contents:
         if str(p).strip():
-            _l, expect = rm_to_css(text.pos_x, ypos)
+            _l, expect = html_text_origin_css(text.pos_x, ypos, p.style.value)
             assert abs(tops[0] - expect) < 0.6, (tops[0], expect)
             break
         ypos += LINE_HEIGHTS.get(p.style.value, 70)
@@ -161,8 +173,10 @@ def main() -> None:
     check_pipeline_identity()
     check_text_y_matches_ink_anchors(FIXTURE)
     check_text_y_matches_ink_anchors(RM / "text_and_strokes.rm")
+    check_text_y_matches_ink_anchors(RM / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm")
     check_text_ink_text_fields(FIXTURE)
     check_ink_text_same_origin(RM / "text_and_strokes.rm")
+    check_ink_text_same_origin(RM / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm")
     _, multi = _export(RM / "text_multiple_lines.rm")
     assert len(_abs_tops(multi)) >= 2, multi
     print("ok: unified RM→InkML→CSS + text Y == ink anchors")

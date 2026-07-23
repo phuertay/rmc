@@ -1,0 +1,38 @@
+                "typography": Details.pathTokens("title.md"),
+                Layout.maximumHeight: root.tokens.status.idle.typography.fontSize * root.tokens.status.idle.typography.lineHeight
+            Layout.preferredHeight: lineHeight * lineCount
+            lineHeight: 1.2
+            lineHeight: root.type.icon.sizing
+            pixelSize: root.typography.fontSize
+            return root.typography.lineHeight
+            spacing: Math.round(root.typography.fontSize * root.typography.lineHeight)/2
+        bottomPadding: lineCount > 1 ? 0 : (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        height: content.lineHeight
+        height: lineCount*lineHeight
+        if (root.typography.lineHeight >= root.typography.fontSize) {
+        pixelSize: root.typography.fontSize
+        return Math.round(root.typography.fontSize * root.typography.lineHeight)
+        topPadding: (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+    lineHeight: {
+    lineHeightMode: Text.FixedHeight
+    spacing: root.typography.fontSize/2
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["body.md", "body.md_low", "body.md_strong", "body.sm", "body.lg"][root.type])
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["title.md", "title.md_alt", "title.lg", "title.xl", "title.x2l"][root.type])
+'fontSize' must be a positive value
+Format as title, subheading, body, list, or checkboxes.
+Subheading
+Subheading2
+Subheading2Style
+SubheadingStyle
+TitleStyle
+crdt::TextProperties::FontSize
+fontSize
+lineHeight
+loaded CSS in %.3fms, line-height=%d, em=%d, fontSize=%d, pt=%d, justify=%d
+qrc:/ark-imports/
+qrc:/ark-imports/tokens
+setLineHeight
+textAnchorLineHeight
+textAnchorLineHeightChanged
+textLineHeight
+textLineHeightChanged

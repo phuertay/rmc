@@ -7,3 +7,11 @@ __pycache__/
 
 .token-savior-cache.json
 .token-savior/
+
+# Device-pulled proprietary fonts (never commit)
+tests/expected/device_fonts/
+remarkable_onenote_fonts.zip
+*.ttf
+*.otf
+*.woff
+*.woff2

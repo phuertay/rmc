@@ -1,0 +1,23 @@
+*N12_GLOBAL__N_122ParagraphStyleUserDataE
+*ZN15SceneController18createRootDocumentERKSt8optionalIN5scene14ParagraphStyleEES0_IdEEUlP5SceneE_
+*ZN20SceneCheckboxManagerC4EP5SceneP13SceneTextItemEUlN9__gnu_cxx17__normal_iteratorIPN6detail12CheckboxInfoESt6vectorIS7_SaIS7_EEEERKN5scene14ParagraphStyleEE_
+*ZNK15SceneController17setParagraphStyleERKN5scene14ParagraphStyleEN13SceneTextItem14IndentHandlingEEUlPK5SceneE_
+FN5scene14ParagraphStyleERK10QTextBlockE
+PFN5scene14ParagraphStyleERK10QTextBlockE
+ParagraphStyle
+Subheading2
+Subheading2Style
+SubheadingStyle
+TitleStyle
+cycleParagraphStyle
+initalParagraphStyle
+loaded CSS in %.3fms, line-height=%d, em=%d, fontSize=%d, pt=%d, justify=%d
+paragraphStyle
+paragraphStyleChanged
+scene::ParagraphStyle
+scene::ParagraphStyle::Type
+setParagraphStyle
+setParagraphStyle: no document focused
+std::optional<scene::ParagraphStyle>
+textParagraphStyle
+textParagraphStyleChanged

@@ -1,0 +1,79 @@
+                "typography": ArkTokens.Style.label.lg_strong,
+                "typography": Details.pathTokens("title.md"),
+                "typography": root.type.item.label.t
+                Layout.maximumHeight: root.tokens.status.idle.typography.fontSize * root.tokens.status.idle.typography.lineHeight
+                typography: hiddenStatus ? root.tokens.status.idle.hiddenTypography : root.tokens.status.idle.typography
+                typography: root.dStyle.typography
+                typography: root.lStyle.typography
+                typography: root.tokens.content.label.idle.typography
+                typography: root.tokens.label.idle.typography
+                typography: root.typography
+            Layout.preferredHeight: lineHeight * lineCount
+            Typography {
+            capitalization: root.typography.textCase
+            family: root.typography.fontFamily
+            letterSpacing: root.typography.letterSpacing
+            lineHeight: 1.2
+            lineHeight: root.type.icon.sizing
+            pixelSize: root.typography.fontSize
+            return root.typography.lineHeight
+            spacing: Math.round(root.typography.fontSize * root.typography.lineHeight)/2
+            typography: (button.accessibility ? button.tokens.content?.label?.idle.typography_a11y : button.tokens.content?.label?.idle.typography) ?? ArkTokens.Style.label.md
+            typography: ArkTokens.Style.label.md
+            typography: root.typography
+            weight: root.typography.fontWeight
+        bottomPadding: lineCount > 1 ? 0 : (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        buttonSize: ButtonBase.Size.XSmall // size is small but typography is even smaller
+        capitalization: root.typography.textCase
+        family: root.typography.fontFamily
+        height: content.lineHeight
+        height: lineCount*lineHeight
+        if (root.typography.lineHeight >= root.typography.fontSize) {
+        letterSpacing: root.typography.letterSpacing
+        pixelSize: root.typography.fontSize
+        return Math.round(root.typography.fontSize * root.typography.lineHeight)
+        topPadding: (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        typography: ArkTokens.Style.label.md
+        typography: root.tokens.content.label ? root.tokens.content.label.idle.typography : ArkTokens.Style.label.md
+        typography: root.tokens.label.idle.typography
+        typography: root.type.content.label.idle.typography
+        typography: style.typography
+        weight: root.typography.fontWeight
+    /// Provide typography token
+    /// typography tokens
+    lineHeight: {
+    lineHeightMode: Text.FixedHeight
+    property var typography
+    property var typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["list.lg", "list.lg_compact", "list.md"][root.type])
+    property var typography: root.type.item.label.idle.typography
+    required property var typography
+    spacing: root.typography.fontSize/2
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + "caption.md")
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["body.md", "body.md_low", "body.md_strong", "body.sm", "body.lg"][root.type])
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["label.lg_strong", "label.lg_subtle", "label.md", "label.sm_strong", "label.sm_subtle", "label.xl_strong"][root.type])
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["title.md", "title.md_alt", "title.lg", "title.xl", "title.x2l"][root.type])
+    typography: labelStyle?.typography ?? ArkTokens.Style.label.md
+'fontSize' must be a positive value
+Format as title, subheading, body, list, or checkboxes.
+Input field with predefined typography and color
+Subheading
+Subheading2
+Subheading2Style
+SubheadingStyle
+Text styled with component text style (typography and color)
+Text styled with typography tokens
+This is a base for all typography components and should not be used directly
+TitleStyle
+Typography {
+\image html client-Typography.qml.png Client
+\image html client-Typography.qml.png client
+\image html paperTablet-Typography.qml.png paperTablet
+crdt::TextProperties::FontSize
+fontSize
+lineHeight
+loaded CSS in %.3fms, line-height=%d, em=%d, fontSize=%d, pt=%d, justify=%d
+setLineHeight
+textAnchorLineHeight
+textAnchorLineHeightChanged
+textLineHeight
+textLineHeightChanged

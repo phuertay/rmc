@@ -1,0 +1,390 @@
+# Pull reMarkable fonts + fontconfig (+ optional xochitl size hints) over SSH.
+#
+# Run from a PC that can reach the tablet (USB 10.11.99.1 or Wi-Fi IP).
+# Expects $env:RM_PASS already set when using password auth (PuTTY plink+pscp).
+#   .\scripts\pull_remarkable_fonts.ps1
+#   $env:RM_HOST='192.168.1.50'; .\scripts\pull_remarkable_fonts.ps1
+# Install folder: <OutDir>\install_me\  (valid .ttf only — open and Install for all users)
+#
+# Already have xochitl (fonts often live only in RCC, not /usr/share/fonts):
+#   .\scripts\pull_remarkable_fonts.ps1 -LocalBinary C:\path\to\xochitl
+#
+# OneNote CSS: "reMarkable Serif VF" / "reMarkable Sans VF" (installed Name table).
+# Style.qml labels differ (Serif Small / Sans). Do NOT commit fonts.
+#
+# Auth (pick one):
+#   $env:RM_PASS already set   # non-interactive (needs PuTTY plink/pscp on PATH)
+#   -Password '...'            # same, as parameter (avoid in shared history)
+#   (omit password)            # OpenSSH prompts / SSH key
+#
+# Needs: OpenSSH (ssh/scp) and/or PuTTY (plink/pscp) when RM_PASS is set.
+# Enable SSH in tablet Settings.
+#Requires -Version 5.1
+[CmdletBinding()]
+param(
+    [string]$Password = $env:RM_PASS,
+    [string]$OutDir = $env:RM_OUT,
+    [string]$LocalBinary = ''  # carve TTFs from this xochitl; skip SSH if set alone
+)
+$ErrorActionPreference = 'Stop'
+$ScriptRev = '2026-07-22-install-me-v5'
+
+$HostName = if ($env:RM_HOST) { $env:RM_HOST } else { '10.11.99.1' }
+$User     = if ($env:RM_USER) { $env:RM_USER } else { 'root' }
+$OutRoot  = if ($OutDir) { $OutDir } else { 'tests/expected/device_fonts' }
+$Target   = "${User}@${HostName}"
+$SshOpts  = @('-o', 'StrictHostKeyChecking=accept-new', '-o', 'ConnectTimeout=8')
+$UsePass  = -not [string]::IsNullOrEmpty($Password)
+$LocalOnly = -not [string]::IsNullOrEmpty($LocalBinary)
+
+function Test-Cmd($Name) {
+    [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+# Soft: return stdout even when remote exit != 0 (BusyBox find often exits 1).
+function Invoke-RmSsh {
+    param(
+        [Parameter(Mandatory)][string]$RemoteCommand,
+        [switch]$Strict
+    )
+    if ($UsePass) {
+        $out = & plink -batch -ssh $Target -pw $Password $RemoteCommand 2>&1
+        $code = $LASTEXITCODE
+        if ($code -ne 0) {
+            $null = cmd /c "echo y| plink -ssh $Target -pw `"$Password`" exit" 2>&1
+            $out = & plink -batch -ssh $Target -pw $Password $RemoteCommand 2>&1
+            $code = $LASTEXITCODE
+        }
+        # plink wraps remote stderr into the stream; keep text lines
+        $text = @($out | ForEach-Object { "$_" }) -join "`n"
+        if ($Strict -and $code -ne 0) {
+            throw "plink failed ($code): $RemoteCommand`n$text"
+        }
+        return $text
+    } else {
+        $out = & ssh @SshOpts $Target $RemoteCommand 2>&1
+        $code = $LASTEXITCODE
+        $text = @($out | ForEach-Object { "$_" }) -join "`n"
+        if ($Strict -and $code -ne 0) {
+            throw "ssh failed ($code): $RemoteCommand`n$text"
+        }
+        return $text
+    }
+}
+
+function Invoke-RmScp {
+    param(
+        [Parameter(Mandatory)][string]$Source,
+        [Parameter(Mandatory)][string]$Destination,
+        [switch]$Recurse
+    )
+    if ($UsePass) {
+        $pscpArgs = @('-batch', '-pw', $Password)
+        if ($Recurse) { $pscpArgs += '-r' }
+        $pscpArgs += @($Source, $Destination)
+        & pscp @pscpArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "pscp failed ($LASTEXITCODE): $Source -> $Destination"
+        }
+    } else {
+        $scpArgs = @() + $SshOpts
+        if ($Recurse) { $scpArgs += '-r' }
+        $scpArgs += @($Source, $Destination)
+        & scp @scpArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "scp failed ($LASTEXITCODE): $Source -> $Destination"
+        }
+    }
+}
+
+# Resolve OUT: -OutDir / RM_OUT, else next to script if not in a repo, else repo-relative
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot = Split-Path -Parent $ScriptDir
+if (-not [System.IO.Path]::IsPathRooted($OutRoot)) {
+    if ((Split-Path -Leaf $ScriptDir) -eq 'scripts' -and (Test-Path (Join-Path $RepoRoot '.git'))) {
+        $OutRoot = Join-Path $RepoRoot $OutRoot
+    } else {
+        $OutRoot = Join-Path $ScriptDir 'device_fonts'
+    }
+}
+
+$CarvePy = Join-Path $ScriptDir 'carve_remarkable_fonts.py'
+$WoffPy = Join-Path $ScriptDir 'woff2_to_ttf.py'
+
+$Meta = Join-Path $OutRoot 'meta'
+$Fonts = Join-Path $OutRoot 'fonts'
+$Carved = Join-Path $Fonts 'carved_from_xochitl'
+$Webui = Join-Path $Fonts 'webui'
+$FcOut = Join-Path $OutRoot 'fontconfig\etc-fonts'
+$Bin = Join-Path $OutRoot 'bin'
+New-Item -ItemType Directory -Force -Path $Meta, $Fonts, $FcOut, $Bin | Out-Null
+
+function Get-PythonCmd {
+    foreach ($n in @('python', 'python3', 'py')) {
+        $c = Get-Command $n -ErrorAction SilentlyContinue
+        if ($c) { return $c.Source }
+    }
+    return $null
+}
+
+function Invoke-CarveXochitl {
+    param([Parameter(Mandatory)][string]$BinaryPath)
+    if (-not (Test-Path -LiteralPath $CarvePy)) {
+        Write-Warning "missing $CarvePy"
+        return
+    }
+    $py = Get-PythonCmd
+    if (-not $py) {
+        Write-Warning "python not on PATH; skip RCC font carve"
+        return
+    }
+    New-Item -ItemType Directory -Force -Path $Carved | Out-Null
+    Write-Host "carve reMarkable*.ttf from $BinaryPath ..."
+    & $py $CarvePy --binary $BinaryPath --out $Carved
+}
+
+function Ensure-FontTools {
+    $py = Get-PythonCmd
+    if (-not $py) { return $null }
+    & $py -c "import fontTools, brotli" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "pip install fonttools brotli (woff2→ttf)..."
+        & $py -m pip install --user fonttools brotli
+        & $py -c "import fontTools, brotli" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "fonttools/brotli missing; cannot convert woff2"
+            return $null
+        }
+    }
+    return $py
+}
+
+function Convert-Woff2InTree {
+    param([Parameter(Mandatory)][string]$FontsRoot)
+    $py = Ensure-FontTools
+    if (-not $py) { return @() }
+    if (-not (Test-Path -LiteralPath $WoffPy)) {
+        Write-Warning "missing $WoffPy"
+        return @()
+    }
+    $convertedDir = Join-Path $FontsRoot 'converted_woff2'
+    New-Item -ItemType Directory -Force -Path $convertedDir | Out-Null
+    $out = @()
+    $woffs = @(Get-ChildItem -LiteralPath $FontsRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -eq '.woff2' -or $_.Extension -eq '.woff' })
+    foreach ($w in $woffs) {
+        $dst = Join-Path $convertedDir ($w.BaseName + '.ttf')
+        Write-Host ("  woff2→ttf {0}" -f $w.Name)
+        & $py $WoffPy $w.FullName $dst
+        if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $dst)) {
+            $out += Get-Item -LiteralPath $dst
+        } else {
+            Write-Warning "convert failed: $($w.FullName)"
+        }
+    }
+    return $out
+}
+
+if ($LocalOnly) {
+    if (-not (Test-Path -LiteralPath $LocalBinary)) {
+        throw "LocalBinary not found: $LocalBinary"
+    }
+    $xo = (Resolve-Path -LiteralPath $LocalBinary).Path
+    Write-Host "-> local-only carve  binary=$xo  out=$OutRoot"
+    "local-only $xo size=$((Get-Item -LiteralPath $xo).Length)" |
+        Set-Content -Encoding utf8 (Join-Path $Meta 'device.txt')
+    Invoke-CarveXochitl -BinaryPath $xo
+} else {
+    if ($UsePass) {
+        if (-not ((Test-Cmd 'plink') -and (Test-Cmd 'pscp'))) {
+            throw @"
+RM_PASS / -Password needs PuTTY tools on PATH (plink.exe + pscp.exe).
+Install PuTTY, or omit the password and type it when OpenSSH prompts,
+or set up an SSH key (recommended).
+"@
+        }
+        Write-Host ("auth=RM_PASS (len={0})" -f $Password.Length)
+    }
+
+    Write-Host "-> $Target  out=$OutRoot  auth=$(if ($UsePass) { 'RM_PASS/plink' } else { 'ssh key or prompt' })"
+
+    # Device identity (BusyBox: head -n, not head -5)
+    Invoke-RmSsh -Strict 'uname -a; head -n 5 /etc/os-release 2>/dev/null; ls /usr/bin/xochitl 2>/dev/null; which fc-list fc-match 2>/dev/null' |
+        Tee-Object -FilePath (Join-Path $Meta 'device.txt') | Out-Host
+
+    # Font inventory
+    Invoke-RmSsh 'fc-list : family file | sort' |
+        Out-File -Encoding utf8 (Join-Path $Meta 'fc-list.txt')
+
+    $fcMatchRemote = @'
+for f in "reMarkable Serif Small" "reMarkable Sans" "EB Garamond" "Noto Sans" serif sans-serif; do
+  echo "=== $f ==="
+  fc-match -v "$f" 2>/dev/null | egrep "family:|file:|style:|slant:|weight:|size:" || fc-match "$f"
+done
+'@
+    Invoke-RmSsh $fcMatchRemote |
+        Out-File -Encoding utf8 (Join-Path $Meta 'fc-match.txt')
+
+    # fontconfig index + copy (no trailing "/." — pscp rejects '.' / '..' path segments)
+    Invoke-RmSsh 'ls -la /etc/fonts /usr/share/fontconfig 2>/dev/null; find /etc/fonts /usr/share/fontconfig -type f 2>/dev/null | head -n 200' |
+        Out-File -Encoding utf8 (Join-Path $Meta 'fontconfig-index.txt')
+    try {
+        Invoke-RmScp -Recurse -Source "${Target}:/etc/fonts" -Destination $FcOut
+    } catch {
+        Write-Warning "scp /etc/fonts failed: $_"
+    }
+
+    # Font file list + download each (system dirs + anything named reMarkable*)
+    $findFonts = @'
+find /usr/share/fonts /home/root/.local/share/fonts /usr/lib/fonts /usr/share/remarkable \
+  -type f \( -name "*.ttf" -o -name "*.otf" -o -name "*.ttc" -o -name "*.woff" -o -name "*.woff2" \) 2>/dev/null
+find /usr/share/remarkable /usr/lib -iname "*remarkable*serif*" -o -iname "*remarkable*sans*" 2>/dev/null | head -n 50
+true
+'@
+    $fontListPath = Join-Path $Meta 'font-files.txt'
+    $fontList = Invoke-RmSsh $findFonts
+    $fontList | Out-File -Encoding utf8 $fontListPath
+
+    $paths = @($fontList -split "`n" | ForEach-Object { $_.Trim() } | Where-Object {
+        $_ -and ($_ -match '\.(ttf|otf|ttc|woff2?)$')
+    } | Select-Object -Unique)
+    Write-Host ("found {0} font files" -f $paths.Count)
+
+    foreach ($remote in $paths) {
+        $base = Split-Path -Leaf $remote
+        $dirKey = ((Split-Path -Parent $remote) -replace '/', '_')
+        $destDir = Join-Path $Fonts $dirKey
+        New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+        try {
+            Invoke-RmScp -Source "${Target}:$remote" -Destination (Join-Path $destDir $base)
+            Write-Host "  got $base"
+        } catch {
+            Write-Warning "skip $remote : $_"
+        }
+    }
+
+    # WebUI faces (often only woff2 on disk; notebook TTFs may be RCC-only)
+    New-Item -ItemType Directory -Force -Path $Webui | Out-Null
+    foreach ($w in @(
+        '/usr/share/remarkable/webui/reMarkableSans.woff2',
+        '/usr/share/remarkable/webui/reMarkableSerif.woff2'
+    )) {
+        $base = Split-Path -Leaf $w
+        try {
+            Invoke-RmScp -Source "${Target}:$w" -Destination (Join-Path $Webui $base)
+            Write-Host "  got webui/$base"
+        } catch {
+            Write-Warning "skip $w : $_"
+        }
+    }
+
+    # xochitl font-related strings + carve TTFs from binary (exact notebook faces)
+    Invoke-RmSsh 'strings /usr/bin/xochitl 2>/dev/null | egrep -i "reMarkable|garamond|noto|SerifSmall|font.?size|FontSize|ParagraphStyle" | sort -u | head -n 400; true' |
+        Out-File -Encoding utf8 (Join-Path $Meta 'xochitl-font-strings.txt')
+
+    Invoke-RmSsh 'opkg list-installed 2>/dev/null | egrep -i "font|freetype|harfbuzz|qt" | head -n 80; true' |
+        Out-File -Encoding utf8 (Join-Path $Meta 'opkg-fonts-qt.txt')
+
+    $xoLocal = Join-Path $Bin 'xochitl'
+    if ($LocalBinary -and (Test-Path -LiteralPath $LocalBinary)) {
+        Invoke-CarveXochitl -BinaryPath ((Resolve-Path -LiteralPath $LocalBinary).Path)
+    } else {
+        try {
+            Write-Host "scp /usr/bin/xochitl -> $xoLocal (for RCC font carve; large)..."
+            Invoke-RmScp -Source "${Target}:/usr/bin/xochitl" -Destination $xoLocal
+            Invoke-CarveXochitl -BinaryPath $xoLocal
+        } catch {
+            Write-Warning "xochitl scp/carve failed: $_. Re-run with -LocalBinary if you already have xochitl."
+        }
+    }
+}
+
+Write-Host "done -> $OutRoot  rev=$ScriptRev"
+Get-ChildItem $Meta -ErrorAction SilentlyContinue | Select-Object Name, Length
+if (Test-Path $Fonts) {
+    $bytes = (Get-ChildItem -Recurse -File $Fonts -ErrorAction SilentlyContinue |
+        Measure-Object -Property Length -Sum).Sum
+    Write-Host ("fonts ~{0:N1} MB" -f ($bytes / 1MB))
+}
+
+# --- Copy valid notebook faces into install_me\ (no zip) ---
+# OneNote CSS: reMarkable Serif Small (L1/L2) + reMarkable Sans (L3+).
+# Convert woff2→real sfnt ttf first (clear flavor; Windows rejects woff-in-.ttf).
+Write-Host "convert woff2 → ttf (if any)..."
+$null = Convert-Woff2InTree -FontsRoot $Fonts
+
+function Test-SfntFile {
+    param([Parameter(Mandatory)][string]$Path)
+    try {
+        $fs = [System.IO.File]::OpenRead($Path)
+        try {
+            $buf = New-Object byte[] 4
+            if ($fs.Read($buf, 0, 4) -ne 4) { return $false }
+        } finally { $fs.Close() }
+        $hex = ($buf | ForEach-Object { $_.ToString('x2') }) -join ''
+        # 00010000 trueType, 4f54544f OTTO, 74727565 true, 74797031 typ1
+        return $hex -in @('00010000', '4f54544f', '74727565', '74797031')
+    } catch { return $false }
+}
+
+$InstallMe = Join-Path $OutRoot 'install_me'
+if (Test-Path -LiteralPath $InstallMe) { Remove-Item -LiteralPath $InstallMe -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $InstallMe | Out-Null
+
+$allFontFiles = @()
+if (Test-Path -LiteralPath $Fonts) {
+    $allFontFiles = @(Get-ChildItem -LiteralPath $Fonts -Recurse -File -ErrorAction SilentlyContinue)
+}
+$serifTtf = @($allFontFiles | Where-Object {
+    ($_.Name -like 'reMarkableSerifSmall*' -or $_.Name -eq 'reMarkableSerif.ttf' -or $_.Name -eq 'reMarkableSerif.otf') -and
+    ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf')
+})
+$sansTtf = @($allFontFiles | Where-Object {
+    ($_.Name -like 'reMarkableSans*') -and
+    ($_.Extension -eq '.ttf' -or $_.Extension -eq '.otf') -and
+    ($_.Name -notlike '*.woff*')
+})
+$needed = @($serifTtf + $sansTtf)
+$needed = @($needed | Sort-Object { if ($_.FullName -match 'carved') { 0 } elseif ($_.FullName -match 'converted') { 1 } else { 2 } }, Name)
+$seen = @{}
+$needed = @($needed | Where-Object {
+    if (-not $_ -or $seen.ContainsKey($_.Name)) { return $false }
+    $seen[$_.Name] = $true
+    $true
+})
+
+$copied = 0
+$lines = @(
+    "install_me  rev=$ScriptRev"
+    "Select all *.ttf → right-click → Install for all users."
+    "OneNote CSS expects: 'reMarkable Serif VF' and 'reMarkable Sans VF'."
+    "(Style.qml says Serif Small / Sans; Windows Name table from webui is VF.)"
+    ""
+)
+foreach ($f in $needed) {
+    if (-not (Test-SfntFile -Path $f.FullName)) {
+        Write-Warning ("skip not-sfnt: {0}" -f $f.FullName)
+        continue
+    }
+    Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $InstallMe $f.Name) -Force
+    $lines += ("{0}  {1} bytes  from {2}" -f $f.Name, $f.Length, $f.FullName)
+    Write-Host ("  install_me\{0}" -f $f.Name)
+    $copied++
+}
+$lines -join "`n" | Set-Content -Encoding utf8 (Join-Path $InstallMe 'INSTALL.txt')
+
+if ($copied -eq 0) {
+    Write-Warning "no valid reMarkable Serif/Sans TTF in $InstallMe"
+    Write-Host "names under fonts\:"
+    $allFontFiles | Select-Object -First 50 Name | ForEach-Object { Write-Host ("  " + $_.Name) }
+} else {
+    Write-Host ("OK -> {0}  ({1} fonts)" -f $InstallMe, $copied)
+    try { explorer.exe $InstallMe } catch {}
+}
+
+# drop stale zip from older script revs
+$staleZip = Join-Path $OutRoot 'remarkable_onenote_fonts.zip'
+if (Test-Path -LiteralPath $staleZip) {
+    Remove-Item -LiteralPath $staleZip -Force -ErrorAction SilentlyContinue
+    Write-Host "removed stale zip $staleZip"
+}

@@ -1,0 +1,98 @@
+                "typography": Details.pathTokens("title.md"),
+                Layout.maximumHeight: root.tokens.status.idle.typography.fontSize * root.tokens.status.idle.typography.lineHeight
+            Layout.preferredHeight: lineHeight * lineCount
+            active: !!root.title || !!root.description
+            font.pixelSize: 12
+            id: titleItem
+            labelStyle: root.type.text.title
+            labelStyle: root.type.title ?? {
+            labelStyle: root.type.title.idle
+            lineHeight: 1.2
+            lineHeight: root.type.icon.sizing
+            objectName: "ActionBarTitle"
+            pixelSize: root.typography.fontSize
+            return Math.max(0, 2 * Math.min(_content.width / 2 - item.x, item.x + item.width - _content.width / 2) - 32); // 16px is the minimum space for the title
+            return root.typography.lineHeight
+            sourceComponent: titleComponent
+            spacing: Math.round(root.typography.fontSize * root.typography.lineHeight)/2
+            text: root.title
+            visible: !!root.title
+            visible: !!root.type.title && !!root.title
+            width: root.maximumTitleWidth
+        bottomPadding: lineCount > 1 ? 0 : (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        height: content.lineHeight
+        height: lineCount*lineHeight
+        if (root.typography.lineHeight >= root.typography.fontSize) {
+        pixelSize: root.typography.fontSize
+        property var style: ArkTokens.ActionBar.primary.title ?? ArkTokens.ActionBar.primary.description
+        readonly property var spaceForTitle: Math.max(...children.map(item => {
+        return Math.round(root.typography.fontSize * root.typography.lineHeight)
+        text: "Title Large"
+        topPadding: (ArkTokens.Style.variable.controlsHeight.small - lineHeight)/2
+        type: ArkControls.Title.Large
+        type: Details.iconButtonType(root.type.text.title.fill, root.type.background.idle.fill)
+       Title style
+    /*! optional title in the center of background. 
+    /// Label for the ActionBar. Either title or description, depending on the type
+    /// Limit title width. Default is 60% of the bar
+    /// Secondary bar title
+    /// Switch off antialiasing of the title
+    /// Switch off antialiasing of title and description
+    /// Switch off title antialiasing
+    /// Title text
+    /// title text
+    @note a spacer (empty Item with Layout.fillWidth: true) is used to calculate available space for the title.
+    @note if the title is too long it will be truncated with "..."
+    ArkControls.Title {
+    lineHeight: {
+    lineHeightMode: Text.FixedHeight
+    property Component titleComponent: Column {
+    property int type: Title.Type.Medium
+    property real contentOffset: !!root.title ? label.implicitHeight + root.type.title.container.paddingBottom : 0
+    property real maximumTitleWidth: Math.min(_content.spaceForTitle, root.width * 0.6)
+    property string title
+    spacing: root.typography.fontSize/2
+    typography: Details.pathTokens((root.accessibility ? "a11y." : "") + ["title.md", "title.md_alt", "title.lg", "title.xl", "title.x2l"][root.type])
+'fontSize' must be a positive value
+/*!  A container with a title and a list of CellItem(s).
+/*!  A container with an optional title in the center. Container items are arranged in a row
+:title
+:titleColumn
+<svg width="%1" height="%2" viewBox="%3 %4 %5 %6" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>%7</title>\n
+A control with a notch pointing to a given item, title, description and a close button.
+CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(entryId, pageId, handwrittenText, authorMap UNINDEXED, wordStrokes UNINDEXED, digitalText, title, tags, type, tokenize="unicode61 categories 'L* M* N* Cf Co P* S*'");
+FPDFBookmark_GetTitle
+Format as title, subheading, body, list, or checkboxes.
+INSERT INTO search (entryId, title, tags, type) VALUES (:entryId, :title, :tags, :type)
+SELECT entryId, pageId, wordStrokes, locate_matching_tokens(search, :hwColumn, :typedColumn, :titleColumn, :tagsColumn), authorMap, type FROM search WHERE search MATCH :ftsQuery 
+Subheading
+Subheading2
+Subheading2Style
+SubheadingStyle
+Text styled as title
+Title
+TitleStyle
+VerbatimError{{title: {}, body: {}}}
+WindowTitleChange
+_ZN5QFont12setPixelSizeEi
+_ZNK5QFont9pixelSizeEv
+_ZNK5QFont9pointSizeEv
+agenda_title
+attendees_title
+crdt::TextProperties::FontSize
+fontSize
+invalid json: 'title' {}
+invalid json: missing required 'title'
+lineHeight
+loaded CSS in %.3fms, line-height=%d, em=%d, fontSize=%d, pt=%d, justify=%d
+notes_title
+setLineHeight
+skipTitle
+skipTitleChanged
+textAnchorLineHeight
+textAnchorLineHeightChanged
+textLineHeight
+textLineHeightChanged
+title
+titleForTool
+with title
