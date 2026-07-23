@@ -359,7 +359,7 @@ TEXT_NUDGE_DX_CSS = -84  # textDX ladder #5 (~1sp left from -68)
 TEXT_NUDGE_DY_CSS = -32  # was -28
 TEXT_NUDGE_DY_L234_CSS = 34  # was 30
 TEXT_NUDGE_DY_L34_CSS = 17  # was 15
-TEXT_NUDGE_DY_L3_CSS = 6  # was 5
+TEXT_NUDGE_DY_L3_CSS = 8  # L3down ladder #3
 TEXT_NUDGE_DY_L4_CSS = 32  # L4down ladder #4
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).

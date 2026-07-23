@@ -104,7 +104,7 @@ def main() -> None:
     assert "36pt" in html and "26pt" in html and "20pt" in html and "18pt" in html, html
     from rmc.exporters.inmkl import TEXT_NUDGE_DY_L3_CSS, INK_SCALE
 
-    assert TEXT_NUDGE_DY_L3_CSS == 6
+    assert TEXT_NUDGE_DY_L3_CSS == 8
     assert INK_SCALE == 1.75
     # OneNote max font precision is 0.5pt — emit path must snap.
     from rmc.exporters.inmkl import _snap_pt
