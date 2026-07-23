@@ -16,8 +16,8 @@ from rmc.exporters import inmkl as ink
 ROOT = Path(__file__).resolve().parent
 RM = ROOT / "rm" / "b87e5354-9e95-4791-b5f4-672ccb94aa4e.rm"
 
-LOCK_H, LOCK_B1, LOCK_B2, LOCK_P = 32.0, 23.0, 17.5, 16.0
-LOCK_S = 1.55
+LOCK_H, LOCK_B1, LOCK_B2, LOCK_P = 41.5, 29.5, 23.0, 21.5
+LOCK_S = 2.0
 OK = 0.02  # pt
 
 
