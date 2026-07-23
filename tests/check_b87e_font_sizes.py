@@ -101,7 +101,7 @@ def main() -> None:
     html = buf.getvalue()
     for s, _st in EXPECTED:
         assert s in html, s
-    assert "36pt" in html and "26pt" in html and "20.5pt" in html and "18pt" in html, html
+    assert "36pt" in html and "26pt" in html and "20pt" in html and "18pt" in html, html
     from rmc.exporters.inmkl import TEXT_NUDGE_DY_L3_CSS, INK_SCALE
 
     assert TEXT_NUDGE_DY_L3_CSS == 6

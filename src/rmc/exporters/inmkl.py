@@ -337,7 +337,7 @@ FONT_FAMILY_SANS = "reMarkable Sans VF"
 FONT_FAMILY_SANS_MEDIUM = "reMarkable Sans VF Medium"
 FONT_FAMILY_SERIF = "reMarkable Serif VF"
 FONT_SIZE_PT = {
-    # S=1.75; L3/L4 hand-locked 20.5 / 18 (not ×scale from mid ladder).
+    # S=1.75; L3/L4 hand-locked 20 / 18.
     si.ParagraphStyle.HEADING: 36.0,
     si.ParagraphStyle.BOLD: 26.0,
     si.ParagraphStyle.PLAIN: 18.0,
@@ -347,7 +347,7 @@ FONT_SIZE_PT = {
     si.ParagraphStyle.CHECKBOX_CHECKED: 18.0,
 }
 # Second+ ParagraphStyle.BOLD on a page (b87e “third” line) — format has no 4th style.
-FONT_SIZE_SECOND_BOLD = 20.5  # L3 locked
+FONT_SIZE_SECOND_BOLD = 20.0  # L3 locked
 # Graph always wraps absolute-div text in <p style="margin-top:5.5pt">.
 ONENOTE_P_MARGIN_PX = round(5.5 * CSS_DPI / 72)  # 7
 # Partial ascent for HEADING / first BOLD (0.8 overshot above the ink box).
@@ -360,7 +360,7 @@ TEXT_NUDGE_DY_CSS = -32  # was -28
 TEXT_NUDGE_DY_L234_CSS = 34  # was 30
 TEXT_NUDGE_DY_L34_CSS = 17  # was 15
 TEXT_NUDGE_DY_L3_CSS = 6  # was 5
-TEXT_NUDGE_DY_L4_CSS = 26  # was 23
+TEXT_NUDGE_DY_L4_CSS = 32  # L4down ladder #4
 # CSS line-height as em of font — RM LINE_HEIGHTS is inter-paragraph gap, not
 # the glyph box (64px on a 20pt title left a huge empty line box).
 TEXT_LINE_HEIGHT_EM = 1.2
