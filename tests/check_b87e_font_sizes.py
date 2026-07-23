@@ -114,12 +114,13 @@ def main() -> None:
     # Installed Windows names (webui VF); Style.qml uses Serif Small / Sans.
     assert html.count("reMarkable Serif VF") >= 2
     assert "reMarkable Sans VF Medium" in html
+    assert "EB Garamond" in html and "Noto Sans" in html
     assert "font-weight:bold" not in html
     assert "This would be the third" in html
     third = html.split("This would be the third")[0].rsplit("font-family:", 1)[-1]
-    assert third.startswith("reMarkable Sans VF Medium"), third[:60]
+    assert "reMarkable Sans VF Medium" in third and "Noto Sans" in third, third[:80]
     second = html.split("Then this is the second")[0].rsplit("font-family:", 1)[-1]
-    assert second.startswith("reMarkable Serif VF"), second[:60]
+    assert "reMarkable Serif VF" in second and "EB Garamond" in second, second[:80]
 
     print(
         f"ok b87e: 4 lines + {len(boxes)} boxes; "
