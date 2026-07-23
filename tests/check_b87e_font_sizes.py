@@ -102,6 +102,10 @@ def main() -> None:
     for s, _st in EXPECTED:
         assert s in html, s
     assert "32pt" in html and "23pt" in html and "17.5pt" in html and "16pt" in html, html
+    # L3 DY locked after L3fine-6of9
+    from rmc.exporters.inmkl import TEXT_NUDGE_DY_L3_CSS
+
+    assert TEXT_NUDGE_DY_L3_CSS == 5
     # OneNote max font precision is 0.5pt — emit path must snap.
     from rmc.exporters.inmkl import _snap_pt
 
